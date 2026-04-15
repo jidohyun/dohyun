@@ -8,6 +8,18 @@ export type BreathState = {
   featuresSinceTidy: number
 }
 
+/** Kent Beck's inhale limit: a tidy exhale is required after this many features. */
+export const BREATH_LIMIT = 2
+
+/** Pure decision: should the gate block starting this task? */
+export function shouldBlockFeatureStart(
+  next: Pick<Task, 'type'> | null,
+  breath: BreathState,
+): boolean {
+  if (!next || next.type !== 'feature') return false
+  return breath.featuresSinceTidy >= BREATH_LIMIT
+}
+
 /** Compute how many features have been completed since the last tidy exhale. */
 export async function getBreathState(cwd?: string): Promise<BreathState> {
   const queue = await readJson<QueueState>(paths.queue(cwd))

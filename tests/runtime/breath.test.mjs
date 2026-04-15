@@ -48,7 +48,29 @@ test('plan parser: extracts chore type from title suffix', () => {
 // ---------- breath.ts: getBreathState ----------
 
 const breathMod = await import(resolve(here, '..', '..', 'dist', 'src', 'runtime', 'breath.js'))
-const { getBreathState } = breathMod
+const { getBreathState, shouldBlockFeatureStart, BREATH_LIMIT } = breathMod
+
+// ---------- shouldBlockFeatureStart (pure) ----------
+
+test('shouldBlockFeatureStart: false when next is null', () => {
+  assert.equal(shouldBlockFeatureStart(null, { featuresSinceTidy: 99 }), false)
+})
+
+test('shouldBlockFeatureStart: false when next is tidy', () => {
+  assert.equal(shouldBlockFeatureStart({ type: 'tidy' }, { featuresSinceTidy: 99 }), false)
+})
+
+test('shouldBlockFeatureStart: false when next is chore', () => {
+  assert.equal(shouldBlockFeatureStart({ type: 'chore' }, { featuresSinceTidy: 99 }), false)
+})
+
+test('shouldBlockFeatureStart: false when under the inhale limit', () => {
+  assert.equal(shouldBlockFeatureStart({ type: 'feature' }, { featuresSinceTidy: BREATH_LIMIT - 1 }), false)
+})
+
+test('shouldBlockFeatureStart: true at the inhale limit', () => {
+  assert.equal(shouldBlockFeatureStart({ type: 'feature' }, { featuresSinceTidy: BREATH_LIMIT }), true)
+})
 
 test('getBreathState: returns 0 features when queue is empty', async () => {
   const dir = sandbox()
