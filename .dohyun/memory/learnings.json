@@ -1,4 +1,37 @@
 {
   "version": 1,
-  "learnings": []
+  "learnings": [
+    {
+      "id": "L001",
+      "date": "2026-04-15",
+      "category": "release-process",
+      "title": "npm publish 2FA — 2024+ 신규 계정은 OTP or granular token 강제",
+      "detail": "npm 계정 profile에 2FA가 disabled여도 registry는 publish에 OTP나 granular token을 요구함. --otp 플래그만으론 부족하고 2FA가 계정에 enable되어 있어야 하거나, granular token with 'Bypass 2FA' 옵션이 필요. 웹 CLI 인증(https://www.npmjs.com/auth/cli/...)이 가장 확실한 경로였음.",
+      "applies_to": ["first-publish", "ci-setup"]
+    },
+    {
+      "id": "L002",
+      "date": "2026-04-15",
+      "category": "packaging",
+      "title": "npm은 bin 경로의 leading ./ 를 invalid로 판단",
+      "detail": "\"./dist/src/cli/index.js\"로 쓰면 npm publish 시 warning과 함께 bin이 자동 제거됨. \"dist/src/cli/index.js\" (leading slash 없이)로 써야 함. npm pkg fix가 자동 교정해줌.",
+      "applies_to": ["package.json"]
+    },
+    {
+      "id": "L003",
+      "date": "2026-04-15",
+      "category": "code-review",
+      "title": "모든 state-mutating CLI 커맨드는 appendLog를 호출해야 함",
+      "detail": "task-start, task-complete, plan-load, dod-check는 appendLog를 호출하는데 note만 빠져있었음. CLAUDE.md 규칙 #6 'Log everything — use appendLog for significant actions'이 있는데도 누락됨. 새 커맨드 추가 시 체크리스트 필요. 0.1.2에서 수정됨.",
+      "applies_to": ["scripts/*.ts", "new-commands"]
+    },
+    {
+      "id": "L004",
+      "date": "2026-04-15",
+      "category": "testing",
+      "title": "CLI smoke test는 execFileSync + mkdtempSync 조합이 가장 깔끔",
+      "detail": "실제 dist/에서 node cli를 실행하고 tmpdir에서 setup→assert→cleanup 사이클. 외부 의존성 없이 node:test만으로 7개 e2e-ish 테스트가 100ms 이하로 돌아감. CI에도 그대로 재사용 가능.",
+      "applies_to": ["tests/*.test.mjs"]
+    }
+  ]
 }
