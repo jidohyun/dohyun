@@ -124,6 +124,58 @@ dohyun의 plan 파일(`.dohyun/plans/*.md`)의 DoD 항목이 곧 "unmarked tests
 - 각 단계마다 테스트
 - 중복 제거와 명료성 향상을 우선순위로
 
+### Features & Options — Breathing의 실제 메커니즘
+
+Kent Beck, *Augmented Coding & Design* (2025-05-03):
+
+| 단계 | 동작 | 구조에 미치는 영향 |
+|------|------|-------------------|
+| **Feature (들숨)** | 새 테스트 작성 + 통과시키는 코드 구현 | coupling↑ cohesion↓ (복잡성 흡수) |
+| **Option (날숨)** | 구조 정제: 책임 분리, 중복 제거, 의존성 명시 | coupling↓ cohesion↑ (복잡성 분할) |
+
+**The Inhibiting Loop (AI가 빠지는 함정):**
+```
+more features → more complexity → slower features → the genie spins for hours
+```
+이 루프에 빠지면 선택지는 둘 뿐 — **(a) 처음부터 다시** 또는 **(b) 사람이 직접 구조를 정리**.
+dohyun의 breath gate는 이 루프 **선제 차단** 장치다: feature 2연속 뒤에는 반드시 option(tidy).
+
+**매 feature 뒤에 tidy를 거부하면 = seed corn을 먹는 것 = 미래의 옵션을 소진.**
+
+### 3 Warning Signs — AI가 길을 잃었다는 구체 신호
+
+Kent Beck, *Augmented Coding: Beyond the Vibes* (2025-06-25):
+
+1. **Loops** — 같은 코드 반복 생성, 해결 안 되는 문제에 갇힘 (무한 루프처럼)
+2. **Functionality I hadn't asked for** — *"논리적인 다음 단계라도"* 요청되지 않은 기능은 중단 신호
+   - 실제 예시 (Beck 원문): *"그 거대 함수? 20줄 더 붙임. 필드 직접 접근? 20번 더 씀."*
+   - AI는 planetary-sized brain이 있어서 복잡성을 줄일 필요가 없다고 **믿는다**. 틀렸다
+3. **Cheating** — 테스트 삭제/비활성화, 실패하는 assertion 주석 처리, `@skip`, 타입을 `any`로 바꿔 통과
+
+이 신호가 보이면 **즉시 개입**. 방향을 돌리거나 컨텍스트를 다시 좁힌다.
+dohyun의 guard와 verify gate는 이 세 신호를 각각 탐지·차단한다.
+
+### Need To Know — Constrain Context 강화판
+
+Kent Beck의 실험 결과: AI에게 *"우리는 데이터베이스를 구현한다"*처럼 **전체 목표**를 주면 복잡성을 미리 흡수해 들숨만 쉰다.
+대신 *"우리는 바이트 페이지에 키와 값을 직렬화한다"*처럼 **다음 스텝에 필요한 최소 컨텍스트**만 준다.
+
+dohyun 적용:
+- 현재 DoD 한 항목에 필요한 정보만 읽는다 (`dohyun dod`로 확인한 것만)
+- 전체 plan을 한 번에 펼치지 않는다 — plan 파일은 참조용, 활성 범위는 현재 task
+- hot.md (향후 도입 예정)를 500자 이내 유지 — 너무 많은 맥락은 inhibiting loop의 연료
+
+### TypeScript-specific
+
+Kent Beck은 Rust 프로젝트에 functional combinator 선호 블록을 추가했다. dohyun(TS)은 다음을 따른다:
+
+- `as` 타입 단언 금지. `z.parse`/type guard로 좁힌다
+- `any` 금지. 모르면 `unknown` 후 좁히기
+- mutation 금지 — spread로 새 객체 생성 (이미 convention §Immutability)
+- `Promise.all`로 독립 I/O 병렬화, `await` 루프는 의존성 있을 때만
+- 에러는 `Result`-like union 또는 throw + 경계에서 catch. fallback은 쓰지 않는다
+- `zod` 스키마를 타입의 단일 진실원으로 (`z.infer<typeof Schema>`)
+
 ### dohyun 워크플로우 매핑
 
 | Beck의 용어 | dohyun에서 |
