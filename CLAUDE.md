@@ -24,6 +24,7 @@ This project is a personal AI workflow harness built on Kent Beck's Augmented Co
 5. **Stay in scope** — only edit files relevant to the current task.
 6. **Log everything** — use `appendLog()` for significant actions.
 7. **State files are truth** — read `.dohyun/` state before starting, update as you work.
+8. **Commit by Kent Beck's rule** — **구조 변경과 행위 변경은 절대 같은 커밋에 섞지 않는다.** 한 태스크 완료 = 최소 1개 커밋, Tidy First 순서(구조 → 행위 → 정리), `--amend`/`--no-verify` 금지, WHY만 쓴다. 전체 규칙은 [docs/conventions.md § Git Commits](docs/conventions.md#git-commits-kent-becks-rule--mandatory).
 
 ## CLI
 
