@@ -1,4 +1,4 @@
-import type { ModeName, ModesState } from './contracts.js'
+import type { ModeName, ModesState, TaskType } from './contracts.js'
 import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now } from '../utils/time.js'
@@ -74,7 +74,7 @@ export interface TidySuggestion {
  * Returns a suggestion, not an enforcement. The developer decides.
  */
 export function suggestTidy(
-  completedTaskType: 'feature' | 'tidy',
+  completedTaskType: TaskType,
   currentMode: string | null
 ): TidySuggestion {
   if (completedTaskType === 'feature' && currentMode !== 'tidy') {
