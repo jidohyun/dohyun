@@ -1,5 +1,6 @@
 import { readText } from '../src/utils/fs.js'
-import { enqueueTask, cancelAllTasks, pruneCancelledTasks } from '../src/runtime/queue.js'
+import { enqueueTask, cancelAllTasks, pruneCancelledTasks, taskSignature } from '../src/runtime/queue.js'
+import { readQueue } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
 import type { TaskType } from '../src/runtime/contracts.js'
 
@@ -81,15 +82,31 @@ export async function runPlan(args: string[], cwd: string): Promise<void> {
       return
     }
 
-    // Clear existing queue (cancel active, then prune all cancelled)
+    // Preserve completed history. Remove only pending/in_progress (via cancel
+    // + prune) and any lingering cancelled rows. Completed tasks stay so a
+    // re-load of the same plan does not lose progress.
     const cancelled = await cancelAllTasks(cwd)
     const pruned = await pruneCancelledTasks(cwd)
     if (pruned > 0) {
       console.log(`Cleared ${pruned} stale task(s) (${cancelled} were active)`)
     }
 
-    // Enqueue parsed tasks
-    for (const task of tasks) {
+    // Dedupe against already-progressed tasks (completed or awaiting review)
+    // by (title + dod) signature so identical plan entries are skipped
+    // instead of re-enqueued.
+    const currentQueue = await readQueue(cwd)
+    const completedSignatures = new Set(
+      (currentQueue?.tasks ?? [])
+        .filter(t => t.status === 'completed' || t.status === 'review-pending')
+        .map(t => taskSignature(t.title, t.dod))
+    )
+
+    const toEnqueue = tasks.filter(
+      t => !completedSignatures.has(taskSignature(t.title, t.dod))
+    )
+    const skippedCount = tasks.length - toEnqueue.length
+
+    for (const task of toEnqueue) {
       await enqueueTask(task.title, {
         type: task.type,
         dod: task.dod,
@@ -97,9 +114,17 @@ export async function runPlan(args: string[], cwd: string): Promise<void> {
       }, cwd)
     }
 
-    await appendLog('plan-load', `Loaded ${tasks.length} task(s) from ${filePath}`, cwd)
-    console.log(`Loaded ${tasks.length} task(s) into queue:`)
-    for (const task of tasks) {
+    await appendLog(
+      'plan-load',
+      `Loaded ${toEnqueue.length} task(s) from ${filePath}` +
+        (skippedCount > 0 ? ` (${skippedCount} skipped as already completed)` : ''),
+      cwd
+    )
+    if (skippedCount > 0) {
+      console.log(`${skippedCount} task(s) skipped (already completed)`)
+    }
+    console.log(`Loaded ${toEnqueue.length} task(s) into queue:`)
+    for (const task of toEnqueue) {
       console.log(`  [${task.type}] ${task.title} (${task.dod.length} DoD items)`)
     }
     return
