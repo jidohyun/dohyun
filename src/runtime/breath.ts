@@ -11,7 +11,13 @@ export type BreathState = {
 /** Kent Beck's inhale limit: a tidy exhale is required after this many features. */
 export const BREATH_LIMIT = 2
 
-/** Pure decision: should the gate block starting this task? */
+/**
+ * Pure decision: should the gate block starting this task?
+ *
+ * Refuses only when the next inhale would be the third in a row.
+ * Tidy/chore always pass — the gate exists to enforce the exhale,
+ * not to slow down genuinely neutral or structural work.
+ */
 export function shouldBlockFeatureStart(
   next: Pick<Task, 'type'> | null,
   breath: BreathState,

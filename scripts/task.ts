@@ -16,6 +16,10 @@ export async function runTask(args: string[], cwd: string): Promise<void> {
       return
     }
 
+    // Kent Beck's Features↔Options breathing: after BREATH_LIMIT inhales,
+    // a tidy exhale is required before the next feature can start.
+    // Refusing here turns the rule into structure — a prompt alone would
+    // fail under cognitive load (see CLAUDE.md § Features & Options).
     const next = await peekTask(cwd)
     const breath = await getBreathState(cwd)
     if (shouldBlockFeatureStart(next, breath)) {
