@@ -33,6 +33,7 @@ export interface ContinuationInfo {
   reason: string | null
   currentTask: string | null
   pendingCount: number
+  reviewPendingIds: string[]
 }
 
 export async function getContinuationInfo(cwd?: string): Promise<ContinuationInfo> {
@@ -49,11 +50,14 @@ export async function getContinuationInfo(cwd?: string): Promise<ContinuationInf
     t.status === 'pending' || t.status === 'in_progress'
   ) ?? []
 
-  const shouldContinue = activeTask !== null || pendingTasks.length > 0
+  const reviewPendingIds = queue?.tasks.filter(t => t.status === 'review-pending').map(t => t.id) ?? []
+  const shouldContinue = activeTask !== null || pendingTasks.length > 0 || reviewPendingIds.length > 0
 
   let reason: string | null = null
   if (activeTask) {
     reason = `In-progress task: "${activeTask.title}"`
+  } else if (reviewPendingIds.length > 0) {
+    reason = `${reviewPendingIds.length} review-pending task(s)`
   } else if (pendingTasks.length > 0) {
     reason = `${pendingTasks.length} pending task(s) in queue`
   }
@@ -63,6 +67,7 @@ export async function getContinuationInfo(cwd?: string): Promise<ContinuationInf
     reason,
     currentTask: activeTask?.title ?? null,
     pendingCount: pendingTasks.length,
+    reviewPendingIds,
   }
 }
 

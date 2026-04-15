@@ -26,10 +26,17 @@ export function evaluateCheckpoint(
   continuationInfo: ContinuationInfo,
   breath: BreathState = { featuresSinceTidy: 0 }
 ): CheckpointAction {
-  // No current task — allow stop.
+  // No current task — allow stop, unless reviews are outstanding.
   // Ralph loop only activates when a task is actively in_progress (dequeued).
   // Just having pending tasks in the queue is NOT enough to block termination.
   if (!currentTask) {
+    if (continuationInfo.reviewPendingIds.length > 0) {
+      const lines = [
+        '[dohyun checkpoint] Review required',
+        ...continuationInfo.reviewPendingIds.map(id => `  - dohyun review run ${id}`),
+      ]
+      return { type: 'continue', reason: lines.join('\n') }
+    }
     if (continuationInfo.pendingCount > 0) {
       return {
         type: 'done',

@@ -77,6 +77,11 @@ async function main() {
       await runTidy(args, workDir)
       break
     }
+    case 'review': {
+      const { runReview } = await import('../../scripts/review.js')
+      await runReview(args, workDir)
+      break
+    }
     case 'log': {
       const { runLog } = await import('../../scripts/log.js')
       await runLog(args, workDir)
@@ -103,6 +108,9 @@ Usage:
   dohyun cancel             Cancel active tasks
   dohyun note "…"           Add a quick note
   dohyun tidy suggest       List files over the LOC threshold in recent feat commits
+  dohyun review run <id>    Print a review request to stdout
+  dohyun review approve <id>              Approve review, task → completed
+  dohyun review reject <id> --reopen "<DoD>"   Reject, re-open DoD item(s)
 `)
       if (command && command !== 'help' && command !== '--help') {
         console.error(`Unknown command: ${command}`)
