@@ -42,7 +42,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs tests/**/*.test.mjs",
     "prepublishOnly": "npm run test",
     "dohyun": "node --loader ts-node/esm src/cli/index.ts"
   },
