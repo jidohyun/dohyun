@@ -72,6 +72,11 @@ async function main() {
       await runTask(args, workDir)
       break
     }
+    case 'tidy': {
+      const { runTidy } = await import('../../scripts/tidy.js')
+      await runTidy(args, workDir)
+      break
+    }
     case 'log': {
       const { runLog } = await import('../../scripts/log.js')
       await runLog(args, workDir)
@@ -97,6 +102,7 @@ Usage:
   dohyun log                Show recent log (--tail N, --filter keyword)
   dohyun cancel             Cancel active tasks
   dohyun note "…"           Add a quick note
+  dohyun tidy suggest       List files over the LOC threshold in recent feat commits
 `)
       if (command && command !== 'help' && command !== '--help') {
         console.error(`Unknown command: ${command}`)
