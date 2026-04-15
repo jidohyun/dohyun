@@ -1,0 +1,90 @@
+#!/usr/bin/env node
+
+import { argv, exit, cwd } from 'node:process'
+
+const [,, command, ...args] = argv
+const workDir = cwd()
+
+async function main() {
+  switch (command) {
+    case 'setup': {
+      const { runSetup } = await import('../../scripts/setup.js')
+      await runSetup(workDir)
+      break
+    }
+    case 'doctor': {
+      const { runDoctor } = await import('../../scripts/doctor.js')
+      await runDoctor(workDir)
+      break
+    }
+    case 'status': {
+      const { runStatus } = await import('../../scripts/status.js')
+      await runStatus(workDir)
+      break
+    }
+    case 'cancel': {
+      const { runCancel } = await import('../../scripts/cancel.js')
+      await runCancel(workDir)
+      break
+    }
+    case 'note': {
+      const { runNote } = await import('../../scripts/note.js')
+      await runNote(args.join(' '), workDir)
+      break
+    }
+    case 'plan': {
+      const { runPlan } = await import('../../scripts/plan.js')
+      await runPlan(args, workDir)
+      break
+    }
+    case 'queue': {
+      const { runQueue } = await import('../../scripts/queue.js')
+      await runQueue(workDir)
+      break
+    }
+    case 'dod': {
+      const { runDod } = await import('../../scripts/dod.js')
+      await runDod(workDir, args)
+      break
+    }
+    case 'task': {
+      const { runTask } = await import('../../scripts/task.js')
+      await runTask(args, workDir)
+      break
+    }
+    case 'log': {
+      const { runLog } = await import('../../scripts/log.js')
+      await runLog(args, workDir)
+      break
+    }
+    default: {
+      console.log(`
+dohyun — Personal AI Workflow Harness (Augmented Coding)
+
+Usage:
+  dohyun setup              Initialize .dohyun/ directory
+  dohyun doctor             Harness health + hook installation check
+  dohyun status             Show current session state
+  dohyun plan               List plans
+  dohyun plan load <file>   Load plan into queue
+  dohyun queue              Show queue with DoD progress
+  dohyun task start         Start next pending task (dequeue)
+  dohyun task complete      Complete current task (requires all DoD checked)
+  dohyun dod                Show current task's DoD status
+  dohyun dod check "<item>" Check off a DoD item
+  dohyun log                Show recent log (--tail N, --filter keyword)
+  dohyun cancel             Cancel active tasks
+  dohyun note "…"           Add a quick note
+`)
+      if (command && command !== 'help' && command !== '--help') {
+        console.error(`Unknown command: ${command}`)
+        exit(1)
+      }
+    }
+  }
+}
+
+main().catch(err => {
+  console.error('Error:', err.message)
+  exit(1)
+})

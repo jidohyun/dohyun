@@ -1,0 +1,22 @@
+node_modules/
+dist/
+*.tsbuildinfo
+*.tgz
+.DS_Store
+
+# Generated from template during setup
+.claude/settings.json
+.claude/skills
+
+# OMC runtime state
+.omc/
+
+# Runtime state (per-project, not shared)
+.dohyun/state/
+.dohyun/runtime/
+.dohyun/logs/
+.dohyun/memory/hot.md
+
+# Keep memory and plans in git
+# .dohyun/memory/
+# .dohyun/plans/

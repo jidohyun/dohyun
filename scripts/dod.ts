@@ -1,0 +1,78 @@
+import { readCurrentTask, readQueue } from '../src/state/read.js'
+import { checkDodItem } from '../src/runtime/queue.js'
+import { writeCurrentTask, appendLog } from '../src/state/write.js'
+
+export async function runDod(cwd: string, args: string[] = []): Promise<void> {
+  const subcommand = args[0]
+
+  // dohyun dod check "item text"
+  if (subcommand === 'check') {
+    const item = args.slice(1).join(' ').trim()
+    if (!item) {
+      console.error('Usage: dohyun dod check "<DoD item text>"')
+      process.exitCode = 1
+      return
+    }
+
+    const current = await readCurrentTask(cwd)
+    if (!current?.task) {
+      console.error('No current task. Run `dohyun task start` first.')
+      process.exitCode = 1
+      return
+    }
+
+    if (!current.task.dod.includes(item)) {
+      console.error(`DoD item not found: "${item}"`)
+      console.error('\nAvailable DoD items:')
+      for (const d of current.task.dod) {
+        console.error(`  - ${d}`)
+      }
+      process.exitCode = 1
+      return
+    }
+
+    const updated = await checkDodItem(current.task.id, item, cwd)
+    if (updated) {
+      await writeCurrentTask({ version: 1, task: updated }, cwd)
+      await appendLog('dod-check', `Checked "${item}" for "${updated.title}"`, cwd)
+      console.log(`Checked: ${item}`)
+      console.log(`Progress: ${updated.dodChecked.length}/${updated.dod.length}`)
+    }
+    return
+  }
+
+  const currentTask = await readCurrentTask(cwd)
+  const task = currentTask?.task
+
+  if (!task) {
+    // Try to show first pending task from queue
+    const queue = await readQueue(cwd)
+    const nextPending = queue?.tasks.find(t => t.status === 'pending')
+    if (nextPending && nextPending.dod.length > 0) {
+      console.log(`Next task: "${nextPending.title}" [${nextPending.type}]\n`)
+      console.log('DoD:')
+      for (const item of nextPending.dod) {
+        console.log(`  [ ] ${item}`)
+      }
+      return
+    }
+    console.log('No active task. Run `dohyun queue` to see pending tasks.')
+    return
+  }
+
+  console.log(`Current task: "${task.title}" [${task.type}]\n`)
+
+  if (task.dod.length === 0) {
+    console.log('No DoD items defined for this task.')
+    return
+  }
+
+  console.log('DoD:')
+  for (const item of task.dod) {
+    const checked = task.dodChecked.includes(item)
+    console.log(`  [${checked ? 'x' : ' '}] ${item}`)
+  }
+
+  const remaining = task.dod.length - task.dodChecked.length
+  console.log(`\n${task.dodChecked.length}/${task.dod.length} complete${remaining > 0 ? ` — ${remaining} remaining` : ' ✓'}`)
+}

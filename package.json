@@ -1,0 +1,59 @@
+{
+  "name": "@jidohyun/dohyun",
+  "version": "0.1.0",
+  "description": "Personal AI workflow harness with Kent Beck's Augmented Coding principles",
+  "keywords": [
+    "claude-code",
+    "ai",
+    "harness",
+    "augmented-coding",
+    "tdd",
+    "workflow"
+  ],
+  "license": "MIT",
+  "author": "jidohyun",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jidohyun/dohyun.git"
+  },
+  "homepage": "https://github.com/jidohyun/dohyun#readme",
+  "bugs": {
+    "url": "https://github.com/jidohyun/dohyun/issues"
+  },
+  "type": "module",
+  "bin": {
+    "dohyun": "dist/src/cli/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist/",
+    "skills/",
+    ".claude/commands/",
+    ".claude/settings.template.json",
+    "prompts/",
+    "templates/",
+    "docs/",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build",
+    "dohyun": "node --loader ts-node/esm src/cli/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
