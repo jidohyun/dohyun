@@ -21,6 +21,7 @@
 
 import { getContinuationInfo } from '../src/runtime/continuation.js'
 import { evaluateCheckpoint, formatCheckpointForHook } from '../src/runtime/checkpoint.js'
+import { getBreathState } from '../src/runtime/breath.js'
 import { appendLog } from '../src/state/write.js'
 import { readJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
@@ -30,13 +31,14 @@ async function main() {
   const cwd = process.cwd()
   console.error(`[dohyun] hook fired: stop-continue @ ${cwd}`)
 
-  const [currentTaskState, continuationInfo] = await Promise.all([
+  const [currentTaskState, continuationInfo, breath] = await Promise.all([
     readJson<CurrentTaskState>(paths.currentTask(cwd)),
     getContinuationInfo(cwd),
+    getBreathState(cwd),
   ])
 
   const currentTask = currentTaskState?.task ?? null
-  const action = evaluateCheckpoint(currentTask, continuationInfo)
+  const action = evaluateCheckpoint(currentTask, continuationInfo, breath)
   const hookOutput = formatCheckpointForHook(action)
 
   if (hookOutput.decision === 'block') {

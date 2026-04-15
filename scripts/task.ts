@@ -1,7 +1,10 @@
-import { dequeueTask, completeTask, checkDodItem, isDodComplete } from '../src/runtime/queue.js'
+import { dequeueTask, completeTask, checkDodItem, isDodComplete, peekTask } from '../src/runtime/queue.js'
 import { writeCurrentTask } from '../src/state/write.js'
 import { readCurrentTask } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
+import { getBreathState } from '../src/runtime/breath.js'
+
+const BREATH_LIMIT = 2
 
 export async function runTask(args: string[], cwd: string): Promise<void> {
   const subcommand = args[0]
@@ -12,6 +15,33 @@ export async function runTask(args: string[], cwd: string): Promise<void> {
       console.log(`Already in progress: "${current.task.title}"`)
       console.log('Run `dohyun dod` to see DoD status.')
       return
+    }
+
+    const next = await peekTask(cwd)
+    if (next && next.type === 'feature') {
+      const breath = await getBreathState(cwd)
+      if (breath.featuresSinceTidy >= BREATH_LIMIT) {
+        if (process.env.DOHYUN_SKIP_BREATH === '1') {
+          await appendLog(
+            'breath-bypassed',
+            `WARN: breath bypassed via DOHYUN_SKIP_BREATH (features since tidy: ${breath.featuresSinceTidy})`,
+            cwd,
+          )
+        } else {
+          console.error(
+            `breath gate: ${breath.featuresSinceTidy} feature(s) since last tidy. ` +
+              'tidy 태스크를 먼저 추가하세요 (add a tidy task before starting another feature).',
+          )
+          console.error('Hint: `dohyun tidy suggest` for candidates, or append a ### T...: <name> (tidy) task to your plan.')
+          await appendLog(
+            'breath-blocked',
+            `WARN: blocked feature start — ${breath.featuresSinceTidy} feature(s) since last tidy`,
+            cwd,
+          )
+          process.exitCode = 1
+          return
+        }
+      }
     }
 
     const task = await dequeueTask(cwd)

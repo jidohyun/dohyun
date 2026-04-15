@@ -14,6 +14,7 @@ import type { Task } from './contracts.js'
 import { isDodComplete } from './queue.js'
 import { suggestTidy } from './mode-manager.js'
 import type { ContinuationInfo } from './continuation.js'
+import type { BreathState } from './breath.js'
 
 export type CheckpointAction =
   | { type: 'continue'; reason: string }       // DoD incomplete, keep working
@@ -22,7 +23,8 @@ export type CheckpointAction =
 
 export function evaluateCheckpoint(
   currentTask: Task | null,
-  continuationInfo: ContinuationInfo
+  continuationInfo: ContinuationInfo,
+  breath: BreathState = { featuresSinceTidy: 0 }
 ): CheckpointAction {
   // No current task — allow stop.
   // Ralph loop only activates when a task is actively in_progress (dequeued).
@@ -74,6 +76,8 @@ export function evaluateCheckpoint(
   if (tidy.suggest && tidy.reason) {
     lines.push('', `Suggestion: ${tidy.reason}`)
   }
+
+  lines.push('', `breath: ${breath.featuresSinceTidy} feature(s) since last tidy`)
 
   if (continuationInfo.pendingCount > 0) {
     lines.push('', `${continuationInfo.pendingCount} more task(s) in dohyun queue after this.`)
