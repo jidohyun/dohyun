@@ -1,6 +1,7 @@
 import { readCurrentTask, readQueue } from '../src/state/read.js'
 import { checkDodItem } from '../src/runtime/queue.js'
 import { writeCurrentTask, appendLog } from '../src/state/write.js'
+import { parseVerifyTag, runVerify } from '../src/runtime/verify.js'
 
 export async function runDod(cwd: string, args: string[] = []): Promise<void> {
   const subcommand = args[0]
@@ -29,6 +30,21 @@ export async function runDod(cwd: string, args: string[] = []): Promise<void> {
       }
       process.exitCode = 1
       return
+    }
+
+    const rule = parseVerifyTag(item)
+    if (rule) {
+      if (process.env.DOHYUN_SKIP_VERIFY === '1') {
+        await appendLog('verify-bypassed', `WARN: verify bypassed via DOHYUN_SKIP_VERIFY for "${item}"`, cwd)
+      } else {
+        const result = await runVerify(rule, { cwd })
+        if (!result.ok) {
+          console.error(`verify failed (${rule.kind}): ${result.reason}`)
+          await appendLog('verify-failed', `WARN: ${rule.kind} failed for "${item}" — ${result.reason}`, cwd)
+          process.exitCode = 1
+          return
+        }
+      }
     }
 
     const updated = await checkDodItem(current.task.id, item, cwd)
