@@ -15,6 +15,7 @@ dist/
 .dohyun/state/
 .dohyun/runtime/
 .dohyun/logs/
+.dohyun/reviews/
 .dohyun/memory/hot.md
 
 # Keep memory and plans in git
