@@ -3,6 +3,17 @@ import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now, uuid } from '../utils/time.js'
 
+/**
+ * Stable signature for task equality when comparing a plan re-load
+ * against tasks already in the queue. Compares by title + DoD items
+ * (order-insensitive) so that re-loading the same plan does not duplicate
+ * completed work.
+ */
+export function taskSignature(title: string, dod: readonly string[]): string {
+  const sortedDod = [...dod].map(s => s.trim()).sort()
+  return JSON.stringify({ title: title.trim(), dod: sortedDod })
+}
+
 function createTask(
   input: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
 ): Task {
