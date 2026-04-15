@@ -15,6 +15,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.3.0] - 2026-04-15
+
+### Added — three Augmented Coding gates
+
+Kent Beck's three warning signs of a lost AI (Loops / Unrequested features / Cheating) now each have a deterministic gate in the harness.
+
+- **Verify gate** — DoD items accept `@verify:kind(arg)` tags (`test`, `build`, `file-exists`, `grep`, `manual`). `dohyun dod check` refuses the checkbox when the verify fails, writes a WARN to the log, and exits non-zero. `DOHYUN_SKIP_VERIFY=1` bypasses (audited). See [docs/verify-gate.md](docs/verify-gate.md).
+- **Breath gate** — tasks carry a `type` (`feature`/`tidy`/`chore`) and `getBreathState()` counts completed-or-in-review features since the last tidy. `dohyun task start` refuses the third consecutive feature. `dohyun tidy suggest` surfaces LOC-heavy files in recent `feat` commits. `DOHYUN_SKIP_BREATH=1` bypasses. See [docs/breath-gate.md](docs/breath-gate.md).
+- **Review gate** — completing a feature transitions to `review-pending` instead of `completed` and drops `.dohyun/reviews/<id>.md`. `dohyun review run|approve|reject --reopen "<DoD>"` closes the loop. Stop hook blocks termination while reviews are outstanding. `tidy`/`chore` skip the gate; `feature` ignores any `skipReview` flag. See [docs/review-gate.md](docs/review-gate.md).
+
+### Added — supporting pieces
+
+- `src/runtime/verify.ts`, `src/runtime/breath.ts`, `src/runtime/review.ts`, `src/runtime/escape.ts`.
+- `prompts/reviewer.md` — reviewer role spec (ignores author claims, checks DoD↔diff alignment).
+- `scripts/tidy.ts`, `scripts/review.ts`.
+- Test coverage: 66 tests total (33 new) including 5 pure-function units for `shouldBlockFeatureStart` and 8 CLI integration tests for review.
+
+### Changed
+
+- `TaskStatus` adds `review-pending`; `TaskType` adds `chore`.
+- `evaluateCheckpoint` takes a third `BreathState` arg and emits `breath: N feature(s) since last tidy` on approve.
+- `ContinuationInfo.reviewPendingIds` lets Stop hook render `Review required` with per-id `dohyun review run` commands.
+- `node --test` glob widened to `tests/**/*.test.mjs`.
+
+### Docs
+
+- `CLAUDE.md` grows the **TDD & Tidy First — Working Protocol** section and a **Features ↔ Options breathing** mechanics block with Kent Beck citations.
+- `AGENTS.md` gets an Augmented Coding 7-principle core.
+- `docs/conventions.md` codifies the **Git Commits (Kent Beck's Rule)** convention.
+- `docs/verify-gate.md`, `docs/breath-gate.md`, `docs/review-gate.md` — per-gate troubleshooting.
+
 ## [0.2.0] - 2026-04-15
 
 ### Added
@@ -75,7 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document templates: PRD, plan, test-spec.
 - Docs: `architecture.md`, `conventions.md`, `workflow.md`.
 
-[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/jidohyun/dohyun/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jidohyun/dohyun/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/jidohyun/dohyun/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jidohyun/dohyun/compare/v0.1.2...v0.1.3
