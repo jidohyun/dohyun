@@ -2,7 +2,25 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { resolve } from 'node:path'
 import { paths } from '../state/paths.js'
+import { now } from '../utils/time.js'
 import type { Task } from './contracts.js'
+
+/** Pure transition: review-pending → completed. */
+export function approveTransition(task: Task): Task {
+  const ts = now()
+  return { ...task, status: 'completed', completedAt: ts, updatedAt: ts }
+}
+
+/** Pure transition: review-pending → in_progress with the named DoD items un-checked. */
+export function rejectTransition(task: Task, reopens: readonly string[]): Task {
+  return {
+    ...task,
+    status: 'in_progress',
+    dodChecked: task.dodChecked.filter(item => !reopens.includes(item)),
+    completedAt: null,
+    updatedAt: now(),
+  }
+}
 
 /**
  * Only feature tasks require review.

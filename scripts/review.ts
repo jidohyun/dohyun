@@ -3,8 +3,8 @@ import { resolve } from 'node:path'
 import { readJson, writeJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
 import { appendLog, writeCurrentTask } from '../src/state/write.js'
-import type { QueueState, Task } from '../src/runtime/contracts.js'
-import { now } from '../src/utils/time.js'
+import type { QueueState } from '../src/runtime/contracts.js'
+import { approveTransition, rejectTransition } from '../src/runtime/review.js'
 
 export async function runReview(args: string[], cwd: string): Promise<void> {
   const [sub, id, ...rest] = args
@@ -55,7 +55,7 @@ async function runApprove(id: string | undefined, cwd: string): Promise<void> {
     process.exitCode = 1
     return
   }
-  const updated: Task = { ...task, status: 'completed', completedAt: now(), updatedAt: now() }
+  const updated = approveTransition(task)
   await writeJson(paths.queue(cwd), {
     ...queue!,
     tasks: queue!.tasks.map(t => t.id === id ? updated : t),
@@ -84,14 +84,7 @@ async function runReject(id: string | undefined, rest: string[], cwd: string): P
     process.exitCode = 1
     return
   }
-  const newChecked = task.dodChecked.filter(item => !reopens.includes(item))
-  const updated: Task = {
-    ...task,
-    status: 'in_progress',
-    dodChecked: newChecked,
-    completedAt: null,
-    updatedAt: now(),
-  }
+  const updated = rejectTransition(task, reopens)
   await writeJson(paths.queue(cwd), {
     ...queue!,
     tasks: queue!.tasks.map(t => t.id === id ? updated : t),
