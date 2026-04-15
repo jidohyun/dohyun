@@ -25,10 +25,16 @@ export async function runQueue(args: string[], cwd: string): Promise<void> {
 
   const pending = queue.tasks.filter(t => t.status === 'pending')
   const inProgress = queue.tasks.filter(t => t.status === 'in_progress')
+  const reviewPending = queue.tasks.filter(t => t.status === 'review-pending')
   const completed = queue.tasks.filter(t => t.status === 'completed')
   const cancelled = queue.tasks.filter(t => t.status === 'cancelled')
 
-  console.log(`Queue: ${pending.length} pending, ${inProgress.length} in-progress, ${completed.length} completed\n`)
+  const reviewSegment = reviewPending.length > 0
+    ? `, ${reviewPending.length} review-pending`
+    : ''
+  console.log(
+    `Queue: ${pending.length} pending, ${inProgress.length} in-progress${reviewSegment}, ${completed.length} completed\n`
+  )
 
   const visible = showAll
     ? queue.tasks
@@ -38,6 +44,7 @@ export async function runQueue(args: string[], cwd: string): Promise<void> {
     const icon = task.status === 'completed' ? '[x]'
       : task.status === 'in_progress' ? '[>]'
       : task.status === 'cancelled' ? '[-]'
+      : task.status === 'review-pending' ? '[?]'
       : '[ ]'
     const dodProgress = task.dod.length > 0
       ? ` (DoD: ${task.dodChecked.length}/${task.dod.length})`
