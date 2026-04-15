@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now } from '../utils/time.js'
@@ -28,7 +29,7 @@ export async function addProjectMemory(
     ?? { version: 1, entries: [] }
 
   const entry: MemoryEntry = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     category,
     content,
     createdAt: now(),
@@ -68,7 +69,7 @@ export async function addLearning(
     ?? { version: 1, learnings: [] }
 
   const entry: LearningEntry = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     context,
     learning,
     createdAt: now(),
