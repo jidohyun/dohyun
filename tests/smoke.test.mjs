@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -89,6 +89,68 @@ test('log --tail returns recent entries', () => {
     const out = run(['log', '--tail', '5'], dir)
     assert.match(out, /first/)
     assert.match(out, /second/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('queue hides cancelled tasks by default, shows with --all', () => {
+  const dir = freshSandbox()
+  try {
+    const planPath = join(dir, '.dohyun', 'plans', 'p.md')
+    
+    writeFileSync(planPath, '# P\n\n### T1: First (feature)\n- [ ] item\n\n### T2: Second (feature)\n- [ ] item\n')
+    run(['plan', 'load', planPath], dir)
+    run(['task', 'start'], dir)
+    run(['cancel'], dir)
+
+    const defaultOut = run(['queue'], dir)
+    assert.doesNotMatch(defaultOut, /\[-\] \[feature\]/)
+    assert.match(defaultOut, /cancelled hidden/)
+
+    const allOut = run(['queue', '--all'], dir)
+    assert.match(allOut, /\[-\]/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('queue clean removes cancelled tasks', () => {
+  const dir = freshSandbox()
+  try {
+    const planPath = join(dir, '.dohyun', 'plans', 'p.md')
+    
+    writeFileSync(planPath, '# P\n\n### T1: First (feature)\n- [ ] item\n')
+    run(['plan', 'load', planPath], dir)
+    run(['cancel'], dir)
+
+    const before = run(['queue', '--all'], dir)
+    assert.match(before, /\[-\]/)
+
+    const clean = run(['queue', 'clean'], dir)
+    assert.match(clean, /Removed 1 cancelled task/)
+
+    const after = run(['queue', '--all'], dir)
+    assert.match(after, /Queue is empty/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('plan load auto-prunes stale cancelled tasks', () => {
+  const dir = freshSandbox()
+  try {
+    
+    const planPath = join(dir, '.dohyun', 'plans', 'p.md')
+    writeFileSync(planPath, '# P\n\n### T1: First (feature)\n- [ ] item\n')
+    run(['plan', 'load', planPath], dir)
+    run(['cancel'], dir)
+
+    // Second load should wipe the cancelled task.
+    run(['plan', 'load', planPath], dir)
+    const out = run(['queue', '--all'], dir)
+    const cancelledMatches = out.match(/\[-\]/g) || []
+    assert.equal(cancelledMatches.length, 0, 'no cancelled tasks should remain after second plan load')
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

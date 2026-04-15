@@ -103,6 +103,19 @@ export async function completeTask(taskId: string, cwd?: string): Promise<Task |
   return updated
 }
 
+export async function pruneCancelledTasks(cwd?: string): Promise<number> {
+  const queue = await loadQueue(cwd)
+  const removed = queue.tasks.filter(t => t.status === 'cancelled')
+  if (removed.length === 0) return 0
+
+  await writeJson(paths.queue(cwd), {
+    ...queue,
+    tasks: queue.tasks.filter(t => t.status !== 'cancelled'),
+  })
+
+  return removed.length
+}
+
 export async function cancelAllTasks(cwd?: string): Promise<number> {
   const queue = await loadQueue(cwd)
   const active = queue.tasks.filter(t =>

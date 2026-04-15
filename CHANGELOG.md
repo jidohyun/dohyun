@@ -9,12 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Auto-prune cancelled tasks from queue (or `dohyun queue --clean`)
-- `plan load` should warn when queue has stale cancelled tasks
 - Multi-project harness sharing
 - Plan file versioning and diff
 - Queue priority scheduling
 - Metrics / time tracking
+- No-op tidy detection (L006)
+
+## [0.2.0] - 2026-04-15
+
+### Added
+
+- `dohyun queue clean` — remove cancelled tasks from the queue.
+- `dohyun queue --all` / `-a` — show cancelled tasks (hidden by default).
+- `pruneCancelledTasks()` helper in `src/runtime/queue.ts`.
+- Smoke tests for queue hide/show, queue clean, and plan-load auto-prune (3 new cases, 10 total).
+
+### Changed
+
+- `dohyun queue` now hides cancelled tasks by default and shows a hint (`N cancelled hidden — use --all...`).
+- `dohyun plan load` now auto-prunes cancelled tasks after the existing cancel step, so reloading a plan gives a clean queue instead of appending on top of stale history. Addresses L005 learning from the first live session.
 
 ## [0.1.4] - 2026-04-15
 
@@ -62,7 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document templates: PRD, plan, test-spec.
 - Docs: `architecture.md`, `conventions.md`, `workflow.md`.
 
-[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/jidohyun/dohyun/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/jidohyun/dohyun/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jidohyun/dohyun/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jidohyun/dohyun/compare/v0.1.1...v0.1.2

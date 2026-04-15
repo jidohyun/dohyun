@@ -59,7 +59,7 @@ async function main() {
     }
     case 'queue': {
       const { runQueue } = await import('../../scripts/queue.js')
-      await runQueue(workDir)
+      await runQueue(args, workDir)
       break
     }
     case 'dod': {
@@ -87,7 +87,9 @@ Usage:
   dohyun status             Show current session state
   dohyun plan               List plans
   dohyun plan load <file>   Load plan into queue
-  dohyun queue              Show queue with DoD progress
+  dohyun queue              Show queue with DoD progress (hides cancelled)
+  dohyun queue --all        Show cancelled tasks too
+  dohyun queue clean        Remove cancelled tasks from queue
   dohyun task start         Start next pending task (dequeue)
   dohyun task complete      Complete current task (requires all DoD checked)
   dohyun dod                Show current task's DoD status

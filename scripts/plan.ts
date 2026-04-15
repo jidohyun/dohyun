@@ -1,5 +1,5 @@
 import { readText } from '../src/utils/fs.js'
-import { enqueueTask, cancelAllTasks } from '../src/runtime/queue.js'
+import { enqueueTask, cancelAllTasks, pruneCancelledTasks } from '../src/runtime/queue.js'
 import { appendLog } from '../src/state/write.js'
 import type { TaskType } from '../src/runtime/contracts.js'
 
@@ -81,10 +81,11 @@ export async function runPlan(args: string[], cwd: string): Promise<void> {
       return
     }
 
-    // Clear existing queue
+    // Clear existing queue (cancel active, then prune all cancelled)
     const cancelled = await cancelAllTasks(cwd)
-    if (cancelled > 0) {
-      console.log(`Cleared ${cancelled} existing task(s)`)
+    const pruned = await pruneCancelledTasks(cwd)
+    if (pruned > 0) {
+      console.log(`Cleared ${pruned} stale task(s) (${cancelled} were active)`)
     }
 
     // Enqueue parsed tasks
