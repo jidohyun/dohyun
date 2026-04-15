@@ -61,10 +61,19 @@ dohyun task complete     # finishes current task
 dohyun task start        # (optional) dequeue next pending task
 ```
 
-### Case 3: "N task(s) pending in dohyun queue"
+### Case 3: "[dohyun checkpoint] Review required"
+One or more feature tasks finished their DoD and are now in `review-pending`. Pick an id, then:
+```bash
+dohyun review run <id>        # read the request file
+dohyun review approve <id>    # if it holds up
+dohyun review reject <id> --reopen "<exact DoD text>"   # if it doesn't
+```
+The reviewer should ignore author claims and only check DoD ↔ diff alignment. Full spec in `prompts/reviewer.md` and `docs/review-gate.md`.
+
+### Case 4: "N task(s) pending in dohyun queue"
 The queue has pending tasks but nothing is actively in progress. **This is allowed to stop.** If you want to work on a queued task, run `dohyun task start` to activate it.
 
-### Case 4: "All tasks complete"
+### Case 5: "All tasks complete"
 Session can end.
 
 ## TDD & Tidy First — Working Protocol
