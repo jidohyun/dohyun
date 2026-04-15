@@ -9,10 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
+- Auto-prune cancelled tasks from queue (or `dohyun queue --clean`)
+- `plan load` should warn when queue has stale cancelled tasks
 - Multi-project harness sharing
 - Plan file versioning and diff
 - Queue priority scheduling
 - Metrics / time tracking
+
+## [0.1.4] - 2026-04-15
+
+### Fixed
+
+- `pre-write-guard` hook now reads `tool_input.file_path` (Claude Code's real payload shape) instead of the old `filePath` key. Previously every write triggered spurious "Loop detected" and "Scope creep" warnings with an empty file path. Discovered while running a real ralph loop in `dohyun-test`.
 
 ## [0.1.3] - 2026-04-15
 
@@ -54,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document templates: PRD, plan, test-spec.
 - Docs: `architecture.md`, `conventions.md`, `workflow.md`.
 
-[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/jidohyun/dohyun/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jidohyun/dohyun/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jidohyun/dohyun/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jidohyun/dohyun/compare/v0.1.0...v0.1.1

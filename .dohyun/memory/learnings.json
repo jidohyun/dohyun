@@ -32,6 +32,38 @@
       "title": "CLI smoke test는 execFileSync + mkdtempSync 조합이 가장 깔끔",
       "detail": "실제 dist/에서 node cli를 실행하고 tmpdir에서 setup→assert→cleanup 사이클. 외부 의존성 없이 node:test만으로 7개 e2e-ish 테스트가 100ms 이하로 돌아감. CI에도 그대로 재사용 가능.",
       "applies_to": ["tests/*.test.mjs"]
+    },
+    {
+      "id": "L005",
+      "date": "2026-04-15",
+      "category": "queue-management",
+      "title": "plan load는 기존 cancelled 태스크를 자동 정리하지 않음",
+      "detail": "dohyun-test 실전 투입 중 발견. cancelled가 큐 목록에 그대로 남아 새 태스크와 섞여 표시됨. 감사추적 목적이면 OK지만, 'pending 뿐인 깨끗한 큐'가 기본 UX가 되어야 함. 대안: `dohyun queue --clean` 또는 `plan load --clean`. 0.2.0에서 처리.",
+      "applies_to": ["scripts/plan.ts", "scripts/queue.ts"]
+    },
+    {
+      "id": "L006",
+      "date": "2026-04-15",
+      "category": "workflow-observation",
+      "title": "Tidy 태스크가 feature 구현 시 이미 충족되는 경우가 흔함",
+      "detail": "`Extract file path to constant`, `All functions have return types` 같은 DoD는 구현을 처음부터 깔끔히 짜면 자연스럽게 충족됨. 이건 버그가 아니라 코딩 스타일이 좋아진 결과. 하지만 '아무 변경 없는 task-complete'를 dohyun이 자동 감지해서 `no-op tidy` 태그를 붙이면 회고에 유용할 듯.",
+      "applies_to": ["workflow-design", "metrics"]
+    },
+    {
+      "id": "L007",
+      "date": "2026-04-15",
+      "category": "bug-prod",
+      "title": "pre-write-guard가 Claude Code payload shape을 몰라 모든 write에 false-positive 경고 발생",
+      "detail": "훅이 `event.filePath`를 읽었는데 Claude Code는 실제로 `tool_input.file_path`로 보냄. 결과: 모든 Edit/Write 직전에 filePath가 빈 문자열이 되어 guard.detectLoop가 '\"\" edited N times'라는 가짜 경고를 매번 찍음. 0.1.4에서 `extractFilePath(event)` 헬퍼로 수정.",
+      "applies_to": ["hooks/*.ts", "claude-code-integration"]
+    },
+    {
+      "id": "L008",
+      "date": "2026-04-15",
+      "category": "workflow-observation",
+      "title": "dohyun-test 3-task 플랜 전체 사이클을 5분 안에 완주 가능",
+      "detail": "plan load → task start → 구현 → dod check × 2 → task complete × 3. 한 사이클이 실제로 빠름. 오히려 병목은 '플랜을 잘 쓰는 것'이라 `/interview`와 `/plan` 스킬이 가장 중요한 접점임이 확인됨.",
+      "applies_to": ["skills/plan", "skills/deep-interview"]
     }
   ]
 }

@@ -36,6 +36,20 @@ const WARN_PATTERNS = [
 interface WriteEvent {
   filePath?: string
   content?: string
+  tool_name?: string
+  tool_input?: {
+    file_path?: string
+    content?: string
+    new_string?: string
+  }
+}
+
+function extractFilePath(event: WriteEvent): string {
+  return event.tool_input?.file_path ?? event.filePath ?? ''
+}
+
+function extractContent(event: WriteEvent): string | null {
+  return event.tool_input?.content ?? event.tool_input?.new_string ?? event.content ?? null
 }
 
 async function main() {
@@ -51,7 +65,9 @@ async function main() {
     return
   }
 
-  const filePath = event.filePath ?? ''
+  const filePath = extractFilePath(event)
+  if (!filePath) return
+
   const cwd = process.cwd()
   console.error(`[dohyun] hook fired: pre-write-guard → ${filePath}`)
 
@@ -85,7 +101,7 @@ async function main() {
     console.warn(`[dohyun] ${scopeWarning.message}`)
   }
 
-  const cheatWarning = detectCheat(filePath, event.content ?? null, false)
+  const cheatWarning = detectCheat(filePath, extractContent(event), false)
   if (cheatWarning) {
     await appendLog('guard', cheatWarning.message, cwd)
     if (cheatWarning.severity === 'block') {
