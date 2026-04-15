@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.3.1] - 2026-04-15
+
+### Fixed
+
+- `uuid()` in `src/utils/time.ts` and `id` assignment in `src/memory/project-memory.ts` now import `randomUUID` from `node:crypto` instead of relying on the global `crypto` that only exists on Node 20+. 0.3.0 shipped green on a Node 25 dev machine but broke CI's 18.x matrix (28 failed cases, all with `crypto is not defined`). Affected any command that enqueues a task (plan load, enqueue, memory entry).
+
 ## [0.3.0] - 2026-04-15
 
 ### Added — three Augmented Coding gates
@@ -106,7 +112,8 @@ Kent Beck's three warning signs of a lost AI (Loops / Unrequested features / Che
 - Document templates: PRD, plan, test-spec.
 - Docs: `architecture.md`, `conventions.md`, `workflow.md`.
 
-[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/jidohyun/dohyun/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/jidohyun/dohyun/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/jidohyun/dohyun/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/jidohyun/dohyun/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/jidohyun/dohyun/compare/v0.1.3...v0.1.4
