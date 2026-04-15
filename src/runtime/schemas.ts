@@ -23,7 +23,7 @@ const sessionStatus = z.enum(['idle', 'active', 'paused', 'error'])
 const modeName = z.enum(['plan', 'execute', 'verify', 'debug', 'tidy'])
 const taskStatus = z.enum(['pending', 'in_progress', 'completed', 'failed', 'cancelled'])
 const taskPriority = z.enum(['low', 'normal', 'high', 'critical'])
-const taskType = z.enum(['feature', 'tidy'])
+const taskType = z.enum(['feature', 'tidy', 'chore'])
 const exitStatus = z.enum(['success', 'failure', 'cancelled'])
 
 // ─── State Schemas ─────────────────────────────────────────────────
