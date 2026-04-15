@@ -103,6 +103,25 @@ export async function completeTask(taskId: string, cwd?: string): Promise<Task |
   return updated
 }
 
+export async function transitionToReviewPending(taskId: string, cwd?: string): Promise<Task | null> {
+  const queue = await loadQueue(cwd)
+  const task = queue.tasks.find(t => t.id === taskId)
+  if (!task) return null
+
+  const updated: Task = {
+    ...task,
+    status: 'review-pending',
+    updatedAt: now(),
+  }
+
+  await writeJson(paths.queue(cwd), {
+    ...queue,
+    tasks: queue.tasks.map(t => t.id === updated.id ? updated : t),
+  })
+
+  return updated
+}
+
 export async function pruneCancelledTasks(cwd?: string): Promise<number> {
   const queue = await loadQueue(cwd)
   const removed = queue.tasks.filter(t => t.status === 'cancelled')

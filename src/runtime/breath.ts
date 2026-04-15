@@ -34,14 +34,17 @@ export async function getBreathState(cwd?: string): Promise<BreathState> {
 }
 
 function countFeaturesSinceTidy(tasks: readonly Task[]): number {
-  const completed = tasks
-    .filter(t => t.status === 'completed' && t.completedAt !== null)
+  // A feature counts as an inhale once its DoD is sealed (completed or
+  // review-pending). Only a tidy exhale — which never goes through review —
+  // resets the counter.
+  const done = tasks
+    .filter(t => (t.status === 'completed' || t.status === 'review-pending'))
     .slice()
-    .sort((a, b) => (a.completedAt ?? '').localeCompare(b.completedAt ?? ''))
+    .sort((a, b) => (a.updatedAt ?? '').localeCompare(b.updatedAt ?? ''))
 
   let count = 0
-  for (let i = completed.length - 1; i >= 0; i--) {
-    const t = completed[i]
+  for (let i = done.length - 1; i >= 0; i--) {
+    const t = done[i]
     if (t.type === 'tidy') return count
     if (t.type === 'feature') count++
     // chore is neutral — does not increment, does not reset

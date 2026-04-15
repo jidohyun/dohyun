@@ -1,9 +1,10 @@
-import { dequeueTask, completeTask, isDodComplete, peekTask } from '../src/runtime/queue.js'
+import { dequeueTask, completeTask, isDodComplete, peekTask, transitionToReviewPending } from '../src/runtime/queue.js'
 import { writeCurrentTask } from '../src/state/write.js'
 import { readCurrentTask } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
 import { getBreathState, shouldBlockFeatureStart } from '../src/runtime/breath.js'
 import { isBypassed, logBypass } from '../src/runtime/escape.js'
+import { requiresReview, writeReviewRequest } from '../src/runtime/review.js'
 
 export async function runTask(args: string[], cwd: string): Promise<void> {
   const subcommand = args[0]
@@ -71,6 +72,18 @@ export async function runTask(args: string[], cwd: string): Promise<void> {
       console.error(`Cannot complete: ${remaining} DoD item(s) unchecked.`)
       console.error('Run `dohyun dod` to see what remains.')
       process.exitCode = 1
+      return
+    }
+
+    if (requiresReview(current.task)) {
+      const pending = await transitionToReviewPending(current.task.id, cwd)
+      if (pending) {
+        writeReviewRequest(pending, cwd)
+        await writeCurrentTask({ version: 1, task: null }, cwd)
+        await appendLog('review-requested', `Review pending for "${pending.title}" — .dohyun/reviews/${pending.id}.md`, cwd)
+        console.log(`Review requested: "${pending.title}"`)
+        console.log(`Run: dohyun review run ${pending.id}`)
+      }
       return
     }
 

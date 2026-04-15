@@ -49,7 +49,7 @@ export interface LastRunState {
 
 // ─── Task & Queue Contracts ────────────────────────────────────────
 
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'
+export type TaskStatus = 'pending' | 'in_progress' | 'review-pending' | 'completed' | 'failed' | 'cancelled'
 export type TaskPriority = 'low' | 'normal' | 'high' | 'critical'
 export type TaskType = 'feature' | 'tidy' | 'chore'
 
