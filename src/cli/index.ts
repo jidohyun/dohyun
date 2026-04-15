@@ -1,12 +1,32 @@
 #!/usr/bin/env node
 
 import { argv, exit, cwd } from 'node:process'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
 
 const [,, command, ...args] = argv
 const workDir = cwd()
 
+function readVersion(): string {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const pkgPath = resolve(here, '..', '..', '..', 'package.json')
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+    return pkg.version ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
+
 async function main() {
   switch (command) {
+    case '--version':
+    case '-v':
+    case 'version': {
+      console.log(readVersion())
+      break
+    }
     case 'setup': {
       const { runSetup } = await import('../../scripts/setup.js')
       await runSetup(workDir)

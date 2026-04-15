@@ -1,6 +1,6 @@
 {
   "name": "@jidohyun/dohyun",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Personal AI workflow harness with Kent Beck's Augmented Coding principles",
   "keywords": [
     "claude-code",
@@ -42,7 +42,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "prepublishOnly": "npm run build",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "prepublishOnly": "npm run test",
     "dohyun": "node --loader ts-node/esm src/cli/index.ts"
   },
   "dependencies": {

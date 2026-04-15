@@ -13,6 +13,56 @@ A small workflow runtime for personal AI-assisted development. It provides:
 - **Separated verification** (implementor ≠ reviewer)
 - **Session persistence** via file-based state
 
+## Philosophy: Breathe In / Breathe Out
+
+Built on Kent Beck's Augmented Coding principles:
+
+- **Inhale** (feature): implement functionality, check DoD items one by one
+- **Pause** (checkpoint): stop hook blocks termination, developer reviews results
+- **Exhale** (tidy): refactor, clean up, reduce coupling
+- **Repeat**
+
+Each task has a **Definition of Done (DoD)** — concrete checkboxes. Stop hooks enforce you to not skip or cheat. One feature at a time. Tidy after each feature. State files are the single source of truth.
+
+## Workflow
+
+```
+/interview → /plan (DoD 정의) → /ralph (실행+체크포인트) → /review
+```
+
+1. **/interview** — Socratic questioning to extract precise requirements
+2. **/plan** — Phased implementation plan with DoD per task, saved to `.dohyun/plans/`
+3. **`dohyun plan load <file>`** — Load plan into queue
+4. **/ralph** — Persistent execution loop, checks DoD off one by one
+5. **/review** — Independent code review by a separate verifier role
+
+## Example Session
+
+```bash
+# 1. Initialize
+dohyun setup
+dohyun status                      # idle, no queue
+
+# 2. Load a plan (after using /plan skill in Claude)
+dohyun plan                        # list plans in .dohyun/plans/
+dohyun plan load my-feature.md
+
+# 3. Start working
+dohyun task start                  # dequeue + activate next task
+dohyun dod                         # show current DoD
+
+# 4. As you verify each DoD item
+dohyun dod check "Function greet(name) returns 'Hello, {name}!'"
+
+# 5. When all DoD checked
+dohyun task complete               # finishes current, ready for next
+
+# 6. Along the way
+dohyun note "Decided to use zod for validation"
+dohyun log --tail 20               # recent activity
+dohyun doctor                      # health check
+```
+
 ## Quick Start
 
 ```bash
