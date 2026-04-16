@@ -1,6 +1,43 @@
 import { readQueue } from '../src/state/read.js'
 import { pruneCancelledTasks } from '../src/runtime/queue.js'
 import { appendLog } from '../src/state/write.js'
+import type { Task, TaskStatus } from '../src/runtime/contracts.js'
+
+export interface QueueBuckets {
+  pending: Task[]
+  inProgress: Task[]
+  reviewPending: Task[]
+  completed: Task[]
+  cancelled: Task[]
+}
+
+/**
+ * Partition tasks into the five status buckets the queue renderer needs.
+ * Pure function; no I/O. Exposed for tests and any future listing command.
+ */
+export function bucketize(tasks: readonly Task[]): QueueBuckets {
+  return {
+    pending: tasks.filter(t => t.status === 'pending'),
+    inProgress: tasks.filter(t => t.status === 'in_progress'),
+    reviewPending: tasks.filter(t => t.status === 'review-pending'),
+    completed: tasks.filter(t => t.status === 'completed'),
+    cancelled: tasks.filter(t => t.status === 'cancelled'),
+  }
+}
+
+const STATUS_ICONS: Record<TaskStatus, string> = {
+  'pending': '[ ]',
+  'in_progress': '[>]',
+  'review-pending': '[?]',
+  'completed': '[x]',
+  'cancelled': '[-]',
+  'failed': '[!]',
+}
+
+/** Leading status glyph for a task row. Pure; shared with tests. */
+export function iconFor(status: TaskStatus): string {
+  return STATUS_ICONS[status] ?? '[ ]'
+}
 
 export async function runQueue(args: string[], cwd: string): Promise<void> {
   const subcommand = args[0]
@@ -23,17 +60,12 @@ export async function runQueue(args: string[], cwd: string): Promise<void> {
     return
   }
 
-  const pending = queue.tasks.filter(t => t.status === 'pending')
-  const inProgress = queue.tasks.filter(t => t.status === 'in_progress')
-  const reviewPending = queue.tasks.filter(t => t.status === 'review-pending')
-  const completed = queue.tasks.filter(t => t.status === 'completed')
-  const cancelled = queue.tasks.filter(t => t.status === 'cancelled')
-
-  const reviewSegment = reviewPending.length > 0
-    ? `, ${reviewPending.length} review-pending`
+  const buckets = bucketize(queue.tasks)
+  const reviewSegment = buckets.reviewPending.length > 0
+    ? `, ${buckets.reviewPending.length} review-pending`
     : ''
   console.log(
-    `Queue: ${pending.length} pending, ${inProgress.length} in-progress${reviewSegment}, ${completed.length} completed\n`
+    `Queue: ${buckets.pending.length} pending, ${buckets.inProgress.length} in-progress${reviewSegment}, ${buckets.completed.length} completed\n`
   )
 
   const visible = showAll
@@ -41,18 +73,13 @@ export async function runQueue(args: string[], cwd: string): Promise<void> {
     : queue.tasks.filter(t => t.status !== 'cancelled')
 
   for (const task of visible) {
-    const icon = task.status === 'completed' ? '[x]'
-      : task.status === 'in_progress' ? '[>]'
-      : task.status === 'cancelled' ? '[-]'
-      : task.status === 'review-pending' ? '[?]'
-      : '[ ]'
     const dodProgress = task.dod.length > 0
       ? ` (DoD: ${task.dodChecked.length}/${task.dod.length})`
       : ''
-    console.log(`  ${icon} [${task.type}] ${task.title}${dodProgress}`)
+    console.log(`  ${iconFor(task.status)} [${task.type}] ${task.title}${dodProgress}`)
   }
 
-  if (!showAll && cancelled.length > 0) {
-    console.log(`\n(${cancelled.length} cancelled hidden — use --all to show, or \`dohyun queue clean\` to remove)`)
+  if (!showAll && buckets.cancelled.length > 0) {
+    console.log(`\n(${buckets.cancelled.length} cancelled hidden — use --all to show, or \`dohyun queue clean\` to remove)`)
   }
 }
