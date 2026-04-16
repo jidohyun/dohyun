@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.7.2] - 2026-04-16
+
+### Added — Dogfood Fixes
+
+- **`dohyun setup` tip for ES module projects** — when the target has `package.json` without `"type":"module"`, setup prints a single info line: `tip: add "type":"module" to package.json for ES module support`. Silent when type=module already present or package.json absent (language-neutral project). Never blocks.
+- **`dohyun review approve --last`** — picks the most-recently-updated review-pending task. Removes the copy-paste of the UUID that sat between `task complete` and `review approve` in the normal feature loop. Existing `review approve <id>` signature is unchanged.
+
+### Docs
+
+- **`docs/onboarding.md`** — 5-minute install → setup → plan → task → complete walkthrough for first-time users (includes the type=module hint explanation).
+
+### Origin
+
+- Both features were discovered by doing a **real end-to-end install + first feature** from a fresh tmpdir using `npm install @jidohyun/dohyun` against the registry, not `npm link`. See `.dohyun/skills-learned/manual-2026-04-16T10-29-*.md` for raw notes.
+
 ## [0.7.1] - 2026-04-16
 
 ### Added
