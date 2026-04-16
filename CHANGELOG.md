@@ -15,6 +15,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.9.0] - 2026-04-16
+
+### Added — Machine-Readable Output
+
+- **`dohyun status --json`** — session, mode, active task (id/title/type/DoD progress), queue counts as a single JSON object. null for absent sections.
+- **`dohyun metrics --json`** — completed totals, byType breakdown, avgDodSizeCompleted, featuresPerTidy (nullable), recent7dCompleted, inQueue counts.
+- **`docs/json-output.md`** — full contract for both shapes, jq usage examples, stability policy (add = minor, remove/rename = major).
+
+### Rationale
+
+External tooling (statusline, tmux, prompt, dashboards) could not previously read dohyun state without regex-parsing human text.  `--json` unlocks integrations without dictating how they render.
+
+### Tests
+
+- 5 status-json tests (parse, counts, null activeTask, active task progress, legacy text preserved).
+- 4 metrics-json tests (parse, byType counts, empty-queue, legacy text preserved).
+
 ## [0.8.1] - 2026-04-16
 
 ### Added
