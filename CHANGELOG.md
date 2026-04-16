@@ -15,6 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.8.1] - 2026-04-16
+
+### Added
+
+- **`dohyun doctor --fix`** — self-service auto-repair. Covers two common cases:
+  - Missing state files (`.dohyun/runtime/queue.json`, `.dohyun/state/session.json`, etc.) → runs `setup` under the hood to regenerate.
+  - Hook event drift in `.claude/settings.json` → re-renders from `settings.template.json` via `--force-settings` (originals backed up to `.bak`).
+- Refuses to touch malformed JSON in an existing file — we never overwrite user data without consent. Those issues are listed separately with a `manual-only` hint and keep exit 1.
+
+### Docs
+
+- `docs/onboarding.md` gains a "문제가 생겼을 때" section spelling out what `--fix` does and what it deliberately won't touch.
+- README quick-start includes the `--fix` variant.
+
+### Tests
+
+- 4 CLI tests: missing state file regenerated, drift-free sandbox is a no-op, hook event drift auto-repaired with `.bak` trail, `--fix`-less exit-1 preserved.
+
 ## [0.8.0] - 2026-04-16
 
 ### Added
