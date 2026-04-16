@@ -15,6 +15,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.5.0] - 2026-04-16
+
+### Added — Hook Layer
+
+- **`hooks/user-prompt-submit.ts`** — fires on `UserPromptSubmit`; echoes the active task title and unchecked DoD items on stderr so the model sees them before acting on each new prompt. Silent when idle.
+- **`hooks/pre-compact.ts`** — fires on `PreCompact`; snapshots the active task + hot cache to `.dohyun/memory/pre-compact-<ISO>.md` so compaction never drops working state.
+- **`settings.template.json`** now declares all 5 hook events (SessionStart, UserPromptSubmit, PreToolUse, PreCompact, Stop).
+
+### Added — Procedural Memory
+
+- **`dohyun learn add "<text>"`** / **`dohyun learn list`** — manual learning candidate CLI. Saves to `.dohyun/skills-learned/manual-*.md`.
+- **Repeated WARN detection** — `detectRepeatedWarnings` in stop hook scans the session log for WARN messages appearing 3+ times and drops `candidate-*.md` files. Deterministic text grouping, no LLM.
+- All candidate files include `REVIEW REQUIRED: human must decide whether to promote to .claude/rules/` (ETH Zurich principle).
+
+### Changed
+
+- **`scripts/doctor.ts`** reads `settings.template.json` to derive expected hook events instead of a hardcoded list. Reports drift with a `--force-settings` suggestion.
+
+### Documentation
+
+- `docs/hook-architecture.md` — new; 5-hook summary table, output channel conventions, firing order diagram.
+- `docs/workflow.md` — added Procedural Memory section (candidate → human review → `.claude/rules/` promotion flow).
+- `CLAUDE.md` — hook overview table and Key Files link.
+
 ## [0.4.0] - 2026-04-16
 
 ### Fixed
