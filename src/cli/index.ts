@@ -141,6 +141,7 @@ Usage:
   dohyun learn add "<text>"  Save a manual learning candidate (human review required)
   dohyun learn list          List learning candidates newest first
   dohyun metrics             Show task-type totals, avg DoD size, breath cycle
+  dohyun metrics --json      Same, as machine-readable JSON
 `)
       if (command && command !== 'help' && command !== '--help') {
         console.error(`Unknown command: ${command}`)

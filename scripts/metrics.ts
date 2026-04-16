@@ -89,10 +89,28 @@ function fmt(n: number, digits = 1): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(digits)
 }
 
-export async function runMetrics(_args: string[], cwd: string): Promise<void> {
+export async function runMetrics(args: string[], cwd: string): Promise<void> {
   const queue = await readQueue(cwd)
   const tasks = queue?.tasks ?? []
   const s = summarise(tasks)
+
+  if (args.includes('--json')) {
+    const payload = {
+      completed: s.completed,
+      byType: s.byType,
+      avgDodSizeCompleted: s.avgDodSizeCompleted,
+      featuresPerTidy: s.featuresPerTidy,
+      recent7dCompleted: s.recent7dCompleted,
+      inQueue: {
+        pending: s.pending,
+        inProgress: s.inProgress,
+        reviewPending: s.reviewPending,
+        cancelled: s.cancelled,
+      },
+    }
+    process.stdout.write(JSON.stringify(payload) + '\n')
+    return
+  }
 
   console.log('=== dohyun metrics ===\n')
   console.log(`Tasks completed:    ${s.completed}`)
