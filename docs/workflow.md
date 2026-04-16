@@ -47,3 +47,31 @@ Separate verifier reviews executor's work with fresh eyes.
 - Complex bugs → debugger
 - Pre-merge review → verifier
 - Requirements extraction → interviewer
+
+## Hot Cache
+
+A cross-session crib note. The file lives at `.dohyun/memory/hot.md`
+(git-ignored per project) and is populated by the developer or the
+model at the end of a session.
+
+**When to write:** whenever a detail matters for *next* session but has
+no obvious home — the active hypothesis you were chasing, an unresolved
+blocker, a command you'll want to re-run, a warning about a surprising
+state.
+
+**When it reloads:** the `session-start` hook reads `hot.md` on next
+launch and echoes it to stderr. Claude Code treats hook stderr as
+system-reminder context, so the model reboots with the same working
+memory you left behind.
+
+**CLI:**
+
+```bash
+dohyun hot write "<text>"   # overwrite
+dohyun hot append "<text>"  # append a timestamped line
+dohyun hot show             # print current contents
+dohyun hot clear            # empty the cache
+```
+
+Keep it terse — the whole file is re-injected every session, so it
+competes for context budget. Delete entries that stop mattering.
