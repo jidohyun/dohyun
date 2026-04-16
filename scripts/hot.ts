@@ -42,12 +42,62 @@ export async function hotAppend(cwd: string, text: string): Promise<void> {
   await writeHotFile(cwd, joined)
 }
 
-/** Return hot cache body, or null when absent/placeholder. */
-export async function hotRead(cwd: string): Promise<string | null> {
-  const body = await readHot(cwd)
-  if (!body || body.trim().length === 0 || body.includes('No session context yet')) {
+const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+/** Matches a leading ISO-8601 timestamp like 2026-04-16T12:34:56.789Z. */
+const ISO_LEAD_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s/
+
+export interface HotReadOptions {
+  /** Override the staleness window. Entries older than this are filtered. */
+  ttlMs?: number
+  /** Test hook — override "now" (defaults to Date.now()). */
+  now?: number
+}
+
+/**
+ * Filter out timestamped lines older than ttlMs. Untimestamped lines are
+ * always preserved (user-authored permanent notes). Separated from hotRead
+ * so other readers can reuse the same filter rule.
+ */
+export function filterStaleEntries(
+  body: string,
+  ttlMs: number = DEFAULT_TTL_MS,
+  nowMs: number = Date.now()
+): { body: string; expired: number } {
+  const lines = body.split('\n')
+  let expired = 0
+  const kept: string[] = []
+  for (const line of lines) {
+    const m = ISO_LEAD_RE.exec(line)
+    if (!m) {
+      kept.push(line)
+      continue
+    }
+    const ts = Date.parse(m[1])
+    if (Number.isNaN(ts)) {
+      kept.push(line)
+      continue
+    }
+    if (nowMs - ts > ttlMs) {
+      expired++
+      continue
+    }
+    kept.push(line)
+  }
+  return { body: kept.join('\n'), expired }
+}
+
+/** Return hot cache body, or null when absent/placeholder/all-stale. */
+export async function hotRead(
+  cwd: string,
+  opts: HotReadOptions = {}
+): Promise<string | null> {
+  const raw = await readHot(cwd)
+  if (!raw || raw.trim().length === 0 || raw.includes('No session context yet')) {
     return null
   }
+  const { body } = filterStaleEntries(raw, opts.ttlMs ?? DEFAULT_TTL_MS, opts.now ?? Date.now())
+  if (body.trim().length === 0) return null
   return body
 }
 
@@ -96,12 +146,19 @@ export async function runHot(args: string[], cwd: string): Promise<void> {
     }
 
     case 'show': {
-      const body = await hotRead(cwd)
-      if (!body) {
+      const raw = await readHot(cwd)
+      if (!raw || raw.trim().length === 0 || raw.includes('No session context yet')) {
         console.log('No hot cache.')
         return
       }
+      const { body, expired } = filterStaleEntries(raw)
+      if (body.trim().length === 0) {
+        console.log('No hot cache.')
+        if (expired > 0) console.log(`(${expired} expired entries hidden)`)
+        return
+      }
       process.stdout.write(body.endsWith('\n') ? body : body + '\n')
+      if (expired > 0) console.log(`(${expired} expired entries hidden)`)
       return
     }
 
