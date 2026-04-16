@@ -27,6 +27,39 @@ async function writeHotFile(cwd: string, body: string): Promise<void> {
   await writeFile(target, body, 'utf8')
 }
 
+/** Overwrite the hot cache with the given text (adds trailing newline if needed). */
+export async function hotWrite(cwd: string, text: string): Promise<void> {
+  await writeHotFile(cwd, text.endsWith('\n') ? text : text + '\n')
+}
+
+/** Append a timestamped line to the hot cache, preserving prior content. */
+export async function hotAppend(cwd: string, text: string): Promise<void> {
+  const prior = (await readHot(cwd)) ?? ''
+  const stamp = new Date().toISOString()
+  const line = `${stamp}  ${text}\n`
+  const joined =
+    prior.endsWith('\n') || prior === '' ? prior + line : prior + '\n' + line
+  await writeHotFile(cwd, joined)
+}
+
+/** Return hot cache body, or null when absent/placeholder. */
+export async function hotRead(cwd: string): Promise<string | null> {
+  const body = await readHot(cwd)
+  if (!body || body.trim().length === 0 || body.includes('No session context yet')) {
+    return null
+  }
+  return body
+}
+
+/** Remove the hot cache file (idempotent). */
+export async function hotClear(cwd: string): Promise<void> {
+  try {
+    await unlink(paths.hot(cwd))
+  } catch {
+    // Already absent — fine.
+  }
+}
+
 function usage(): void {
   console.error('Usage:')
   console.error('  dohyun hot write "<text>"    # overwrite hot cache')
@@ -46,7 +79,7 @@ export async function runHot(args: string[], cwd: string): Promise<void> {
         process.exitCode = 1
         return
       }
-      await writeHotFile(cwd, text.endsWith('\n') ? text : text + '\n')
+      await hotWrite(cwd, text)
       console.log('Hot cache written.')
       return
     }
@@ -57,18 +90,14 @@ export async function runHot(args: string[], cwd: string): Promise<void> {
         process.exitCode = 1
         return
       }
-      const prior = (await readHot(cwd)) ?? ''
-      const stamp = new Date().toISOString()
-      const line = `${stamp}  ${text}\n`
-      const joined = prior.endsWith('\n') || prior === '' ? prior + line : prior + '\n' + line
-      await writeHotFile(cwd, joined)
+      await hotAppend(cwd, text)
       console.log('Hot cache appended.')
       return
     }
 
     case 'show': {
-      const body = await readHot(cwd)
-      if (!body || body.trim().length === 0 || body.includes('No session context yet')) {
+      const body = await hotRead(cwd)
+      if (!body) {
         console.log('No hot cache.')
         return
       }
@@ -77,13 +106,8 @@ export async function runHot(args: string[], cwd: string): Promise<void> {
     }
 
     case 'clear': {
-      try {
-        await unlink(paths.hot(cwd))
-        console.log('Hot cache cleared.')
-      } catch {
-        // Already absent — idempotent.
-        console.log('Hot cache already empty.')
-      }
+      await hotClear(cwd)
+      console.log('Hot cache cleared.')
       return
     }
 
