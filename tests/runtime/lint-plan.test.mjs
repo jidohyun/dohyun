@@ -62,3 +62,54 @@ test('lintPlan: issue entries carry line numbers (1-based)', () => {
   const err = issues.find(i => i.level === 'error')
   assert.equal(err.line, 1)
 })
+
+// --- verify tag validation ---
+
+test('lintPlan: valid verify tags pass — file-exists, grep, test, build, manual', () => {
+  const content = [
+    '### T1: Title (feature)',
+    '- [ ] item @verify:file-exists(foo.md)',
+    '- [ ] item @verify:grep(pattern)',
+    '- [ ] item @verify:test(unit)',
+    '- [ ] item @verify:build',
+    '- [ ] item @verify:manual',
+    '',
+  ].join('\n')
+  const issues = lintPlan(content)
+  assert.deepEqual(issues, [], `expected no issues, got ${JSON.stringify(issues)}`)
+})
+
+test('lintPlan: unknown verify kind → error', () => {
+  const content = [
+    '### T1: Title (feature)',
+    '- [ ] item @verify:weirdkind(x)',
+    '',
+  ].join('\n')
+  const issues = lintPlan(content)
+  const err = issues.find(i => i.level === 'error' && /verify/i.test(i.message))
+  assert.ok(err, 'expected a verify-related error')
+  assert.match(err.message, /weirdkind|unknown/i)
+})
+
+test('lintPlan: file-exists without argument → error', () => {
+  const content = [
+    '### T1: Title (feature)',
+    '- [ ] item @verify:file-exists()',
+    '',
+  ].join('\n')
+  const issues = lintPlan(content)
+  const err = issues.find(i => i.level === 'error' && /verify/i.test(i.message))
+  assert.ok(err, 'expected a verify-related error')
+  assert.match(err.message, /file-exists.*(arg|path|required|empty)/i)
+})
+
+test('lintPlan: grep without argument → error', () => {
+  const content = [
+    '### T1: Title (feature)',
+    '- [ ] item @verify:grep()',
+    '',
+  ].join('\n')
+  const issues = lintPlan(content)
+  const err = issues.find(i => i.level === 'error' && /grep/i.test(i.message))
+  assert.ok(err)
+})

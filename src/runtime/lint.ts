@@ -7,7 +7,11 @@
  * to enqueue.
  */
 
+import { parseVerifyTag } from './verify.js'
+
 const KNOWN_TYPES = ['feature', 'tidy', 'chore', 'fix'] as const
+const VERIFY_KINDS_REQUIRING_ARG = ['file-exists', 'grep'] as const
+const VERIFY_TAG_ANY = /@verify:([a-z-]+)(?:\(([^)]*)\))?/
 
 export type LintLevel = 'error' | 'warn'
 
@@ -80,6 +84,7 @@ export function lintPlan(content: string): LintIssue[] {
 
     if (current && DOD_ITEM_RE.test(line)) {
       current.dodCount++
+      lintVerifyTag(line, lineNo, issues)
     }
   }
   closeCurrent()
@@ -107,4 +112,33 @@ export function lintPlan(content: string): LintIssue[] {
   }
 
   return issues
+}
+
+function lintVerifyTag(line: string, lineNo: number, issues: LintIssue[]): void {
+  const m = VERIFY_TAG_ANY.exec(line)
+  if (!m) return
+  const kind = m[1]
+  const arg = m[2] ?? ''
+  const hasParens = m[2] !== undefined
+
+  // Use parseVerifyTag to confirm kind is recognised (null = unknown).
+  const probe = parseVerifyTag(line)
+  if (!probe) {
+    issues.push({
+      level: 'error',
+      line: lineNo,
+      message: `unknown @verify kind "${kind}" — valid: test|build|file-exists|grep|manual`,
+    })
+    return
+  }
+
+  if (VERIFY_KINDS_REQUIRING_ARG.includes(probe.kind as typeof VERIFY_KINDS_REQUIRING_ARG[number])) {
+    if (!hasParens || arg.trim().length === 0) {
+      issues.push({
+        level: 'error',
+        line: lineNo,
+        message: `@verify:${probe.kind} requires a non-empty argument`,
+      })
+    }
+  }
 }
