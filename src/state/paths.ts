@@ -30,6 +30,7 @@ export const paths = {
   // Dirs
   plans: (cwd?: string) => resolve(harnessRoot(cwd), 'plans'),
   logs: (cwd?: string) => resolve(harnessRoot(cwd), 'logs'),
+  skillsLearned: (cwd?: string) => resolve(harnessRoot(cwd), 'skills-learned'),
   stateDir: (cwd?: string) => resolve(harnessRoot(cwd), 'state'),
   runtimeDir: (cwd?: string) => resolve(harnessRoot(cwd), 'runtime'),
   memoryDir: (cwd?: string) => resolve(harnessRoot(cwd), 'memory'),
