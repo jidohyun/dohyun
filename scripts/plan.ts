@@ -3,6 +3,7 @@ import { enqueueTask, cancelAllTasks, pruneCancelledTasks, taskSignature } from 
 import { readQueue } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
 import { lintPlan } from '../src/runtime/lint.js'
+import { dohyunError } from '../src/utils/error.js'
 import type { TaskType } from '../src/runtime/contracts.js'
 
 interface ParsedTask {
@@ -69,8 +70,7 @@ export async function runPlan(args: string[], cwd: string): Promise<void> {
 
     const content = await readText(filePath)
     if (content === null || content === undefined) {
-      console.error(`Plan file not found: ${filePath}`)
-      process.exitCode = 1
+      dohyunError('plan/not-found', `Plan file not found: ${filePath}`)
       return
     }
 
@@ -107,8 +107,7 @@ export async function runPlan(args: string[], cwd: string): Promise<void> {
 
     const content = await readText(filePath)
     if (!content) {
-      console.error(`Plan file not found: ${filePath}`)
-      process.exitCode = 1
+      dohyunError('plan/not-found', `Plan file not found: ${filePath}`)
       return
     }
 

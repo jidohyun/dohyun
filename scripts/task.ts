@@ -5,6 +5,7 @@ import { appendLog } from '../src/state/write.js'
 import { getBreathState, shouldBlockFeatureStart } from '../src/runtime/breath.js'
 import { isBypassed, logBypass } from '../src/runtime/escape.js'
 import { requiresReview, writeReviewRequest } from '../src/runtime/review.js'
+import { dohyunError } from '../src/utils/error.js'
 
 export async function runTask(args: string[], cwd: string): Promise<void> {
   const subcommand = args[0]
@@ -69,9 +70,11 @@ export async function runTask(args: string[], cwd: string): Promise<void> {
 
     if (!isDodComplete(current.task)) {
       const remaining = current.task.dod.length - current.task.dodChecked.length
-      console.error(`Cannot complete: ${remaining} DoD item(s) unchecked.`)
-      console.error('Run `dohyun dod` to see what remains.')
-      process.exitCode = 1
+      dohyunError(
+        'task/dod-incomplete',
+        `Cannot complete: ${remaining} DoD item(s) unchecked.`,
+        { hint: 'Run `dohyun dod` to see what remains.' }
+      )
       return
     }
 
