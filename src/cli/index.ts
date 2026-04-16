@@ -35,7 +35,8 @@ async function main() {
     }
     case 'doctor': {
       const { runDoctor } = await import('../../scripts/doctor.js')
-      await runDoctor(workDir)
+      const fix = args.includes('--fix')
+      await runDoctor(workDir, { fix })
       break
     }
     case 'status': {
@@ -110,6 +111,7 @@ dohyun — Personal AI Workflow Harness (Augmented Coding)
 Usage:
   dohyun setup              Initialize .dohyun/ directory
   dohyun doctor             Harness health + hook installation check
+  dohyun doctor --fix       Auto-repair missing state files and hook drift
   dohyun status             Show current session state
   dohyun plan               List plans
   dohyun plan load <file>   Load plan into queue

@@ -6,9 +6,18 @@ interface CheckResult {
   name: string
   ok: boolean
   detail: string
+  /**
+   * One of the whitelisted auto-fix actions.  null means "needs manual
+   * intervention" — typically broken JSON.
+   */
+  fix?: 'run-setup' | 'force-settings' | null
 }
 
-export async function runDoctor(cwd: string): Promise<void> {
+export interface DoctorOptions {
+  fix?: boolean
+}
+
+export async function runDoctor(cwd: string, opts: DoctorOptions = {}): Promise<void> {
   console.log('Harness Health Check\n')
 
   const checks: CheckResult[] = []
@@ -31,6 +40,7 @@ export async function runDoctor(cwd: string): Promise<void> {
       name: file.name,
       ok: exists,
       detail: exists ? 'found' : 'MISSING — run `dohyun setup`',
+      fix: exists ? undefined : 'run-setup',
     })
   }
 
@@ -43,8 +53,24 @@ export async function runDoctor(cwd: string): Promise<void> {
   for (const path of jsonFiles) {
     const data = await readJson(path)
     const name = path.split('/').pop() ?? path
+    const exists = await fileExists(path)
     if (data === null) {
-      checks.push({ name: `${name} (parse)`, ok: false, detail: 'invalid JSON or missing' })
+      // Distinguish "missing" (auto-fixable) from "malformed" (manual-only).
+      if (!exists) {
+        checks.push({
+          name: `${name} (parse)`,
+          ok: false,
+          detail: 'missing — run `dohyun setup`',
+          fix: 'run-setup',
+        })
+      } else {
+        checks.push({
+          name: `${name} (parse)`,
+          ok: false,
+          detail: 'invalid JSON — inspect and fix by hand (auto-fix refuses to clobber)',
+          fix: null,
+        })
+      }
     } else {
       checks.push({ name: `${name} (parse)`, ok: true, detail: 'valid' })
     }
@@ -60,6 +86,7 @@ export async function runDoctor(cwd: string): Promise<void> {
     detail: hasSettings
       ? 'found — hooks registered'
       : 'MISSING — hooks will NOT fire in Claude Code',
+    fix: hasSettings ? undefined : 'run-setup',
   })
 
   if (hasSettings) {
@@ -80,6 +107,7 @@ export async function runDoctor(cwd: string): Promise<void> {
       detail: missingEvents.length === 0
         ? `${expectedEvents.length} hook(s) registered — ${hookEvents.join(', ')}`
         : `missing: ${missingEvents.join(', ')} — Run \`dohyun setup --force-settings\` to refresh`,
+      fix: missingEvents.length === 0 ? undefined : 'force-settings',
     })
   }
 
@@ -94,7 +122,31 @@ export async function runDoctor(cwd: string): Promise<void> {
   const failed = checks.filter(c => !c.ok).length
   console.log(`\n${checks.length} checks, ${failed} issue(s)`)
 
-  if (failed > 0) {
+  if (failed === 0) return
+
+  if (!opts.fix) {
+    process.exitCode = 1
+    return
+  }
+
+  // --fix: apply whitelisted auto-repair actions.
+  const needsSetup = checks.some(c => !c.ok && c.fix === 'run-setup')
+  const needsForceSettings = checks.some(c => !c.ok && c.fix === 'force-settings')
+  const manualOnly = checks.filter(c => !c.ok && !c.fix)
+
+  if (needsSetup || needsForceSettings) {
+    console.log('\nApplying --fix:')
+    const { runSetup } = await import('./setup.js')
+    await runSetup(cwd, { forceSettings: needsForceSettings })
+    const fixedCount = checks.filter(c => !c.ok && c.fix).length
+    console.log(`\nfixed: ${fixedCount} issue(s). Run \`dohyun doctor\` again to verify.`)
+  }
+
+  if (manualOnly.length > 0) {
+    console.log(`\n${manualOnly.length} issue(s) need manual attention (not auto-fixed):`)
+    for (const c of manualOnly) {
+      console.log(`  - ${c.name}: ${c.detail}`)
+    }
     process.exitCode = 1
   }
 }
