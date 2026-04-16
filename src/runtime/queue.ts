@@ -194,3 +194,61 @@ export function isDodComplete(task: Task): boolean {
   if (task.dod.length === 0) return true
   return task.dod.every(item => task.dodChecked.includes(item))
 }
+
+export type ReorderTarget =
+  | { mode: 'first' }
+  | { mode: 'before'; id: string }
+
+/**
+ * Move a pending task to a new position within the pending segment of the
+ * queue.  Non-pending tasks keep their absolute slot — we only permute the
+ * pending rows relative to each other.
+ *
+ * Errors:
+ *   - task id not found
+ *   - task is not currently pending
+ *   - target id (for --before) is not a pending task
+ */
+export async function reorderPending(
+  taskId: string,
+  target: ReorderTarget,
+  cwd?: string
+): Promise<void> {
+  const queue = await readJson<QueueState>(paths.queue(cwd))
+  if (!queue) throw new Error('Queue not found — run `dohyun setup` first.')
+
+  const task = queue.tasks.find(t => t.id === taskId)
+  if (!task) throw new Error(`Task not found: ${taskId}`)
+  if (task.status !== 'pending') {
+    throw new Error(`Task ${taskId.slice(0, 8)} is not pending (status: ${task.status}). Only pending tasks can be reordered.`)
+  }
+
+  if (target.mode === 'before') {
+    const anchor = queue.tasks.find(t => t.id === target.id)
+    if (!anchor) throw new Error(`Target task not found: ${target.id}`)
+    if (anchor.status !== 'pending') {
+      throw new Error(`Target task ${target.id.slice(0, 8)} is not pending.`)
+    }
+  }
+
+  const nonPending = queue.tasks.filter(t => t.status !== 'pending')
+  const pending = queue.tasks.filter(t => t.status === 'pending')
+  const withoutTarget = pending.filter(t => t.id !== taskId)
+
+  let reordered: Task[]
+  if (target.mode === 'first') {
+    reordered = [task, ...withoutTarget]
+  } else {
+    const anchorIdx = withoutTarget.findIndex(t => t.id === target.id)
+    reordered = [
+      ...withoutTarget.slice(0, anchorIdx),
+      task,
+      ...withoutTarget.slice(anchorIdx),
+    ]
+  }
+
+  await writeJson(paths.queue(cwd), {
+    ...queue,
+    tasks: [...nonPending, ...reordered],
+  })
+}

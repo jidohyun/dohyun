@@ -1,5 +1,5 @@
 import { readQueue } from '../src/state/read.js'
-import { pruneCancelledTasks } from '../src/runtime/queue.js'
+import { pruneCancelledTasks, reorderPending } from '../src/runtime/queue.js'
 import { appendLog } from '../src/state/write.js'
 import type { Task, TaskStatus } from '../src/runtime/contracts.js'
 
@@ -50,6 +50,40 @@ export async function runQueue(args: string[], cwd: string): Promise<void> {
     }
     await appendLog('queue-clean', `Pruned ${removed} cancelled task(s)`, cwd)
     console.log(`Removed ${removed} cancelled task(s) from queue.`)
+    return
+  }
+
+  if (subcommand === 'reorder') {
+    const taskId = args[1]
+    if (!taskId) {
+      console.error('Usage: dohyun queue reorder <id> --first | --before <id>')
+      process.exitCode = 1
+      return
+    }
+
+    let target: { mode: 'first' } | { mode: 'before'; id: string }
+    if (args.includes('--first')) {
+      target = { mode: 'first' }
+    } else {
+      const beforeIdx = args.indexOf('--before')
+      if (beforeIdx < 0 || !args[beforeIdx + 1]) {
+        console.error('Usage: dohyun queue reorder <id> --first | --before <id>')
+        process.exitCode = 1
+        return
+      }
+      target = { mode: 'before', id: args[beforeIdx + 1] }
+    }
+
+    try {
+      await reorderPending(taskId, target, cwd)
+      const label = target.mode === 'first' ? '--first' : `--before ${target.id}`
+      await appendLog('queue-reorder', `Moved ${taskId} ${label}`, cwd)
+      console.log(`Reordered task ${taskId.slice(0, 8)} (${label})`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error(msg)
+      process.exitCode = 1
+    }
     return
   }
 

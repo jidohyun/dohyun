@@ -111,6 +111,7 @@ Usage:
   dohyun queue              Show queue with DoD progress (hides cancelled)
   dohyun queue --all        Show cancelled tasks too
   dohyun queue clean        Remove cancelled tasks from queue
+  dohyun queue reorder <id> --first | --before <id>  Reorder pending tasks
   dohyun task start         Start next pending task (dequeue)
   dohyun task complete      Complete current task (requires all DoD checked)
   dohyun dod                Show current task's DoD status
