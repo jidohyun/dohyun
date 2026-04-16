@@ -92,6 +92,11 @@ async function main() {
       await runHot(args, workDir)
       break
     }
+    case 'learn': {
+      const { runLearn } = await import('../../scripts/learn.js')
+      await runLearn(args, workDir)
+      break
+    }
     default: {
       console.log(`
 dohyun — Personal AI Workflow Harness (Augmented Coding)
@@ -120,6 +125,8 @@ Usage:
   dohyun hot append "<text>" Append a timestamped line to the hot cache
   dohyun hot show            Print the hot cache contents
   dohyun hot clear           Empty the hot cache
+  dohyun learn add "<text>"  Save a manual learning candidate (human review required)
+  dohyun learn list          List learning candidates newest first
 `)
       if (command && command !== 'help' && command !== '--help') {
         console.error(`Unknown command: ${command}`)

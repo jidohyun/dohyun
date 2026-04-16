@@ -17,6 +17,7 @@ dist/
 .dohyun/logs/
 .dohyun/reviews/
 .dohyun/memory/hot.md
+.dohyun/skills-learned/
 
 # Keep memory and plans in git
 # .dohyun/memory/
