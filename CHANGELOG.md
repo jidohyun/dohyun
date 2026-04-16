@@ -15,6 +15,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.5.1] - 2026-04-16
+
+### Fixed
+
+- **Stop hook infinite loop on tidy/chore tasks** — when a tidy or chore task reached `DoD N/N`, `evaluateCheckpoint` emitted an `approve` (block) action instead of `done`, asking the developer to "verify + run `dohyun task complete`". But `dohyun task complete` skips the review gate for non-feature tasks and instantly clears the current task, leaving the stop hook to keep re-firing the same approve message until the user cancelled the session. Now only `feature` and `fix` tasks require approval; `tidy` and `chore` return `done` and let the session end. Also replaced the hardcoded `"Feature"` label in the approve message with the actual task title.
+
+### Added
+
+- **`fix` task type** — plans can now declare `### T1: Title (fix)`. Behaves identically to `feature` (requires review, counts toward the breath inhale budget, blocks on checkpoint, triggers tidy suggestion on complete). Purely a labelling distinction so bugfix tasks are visible in plan files and logs.
+- **`dohyun setup --force-settings`** — re-renders `.claude/settings.json` from the template. If the rendered output matches the existing file, prints `Settings already up to date` and does nothing. If they differ, the current file is backed up to `settings.json.bak` before being overwritten. Closes the loop that `doctor` opened when it detected drift in 0.5.0 but had no matching command to fix it.
+- **`dohyun queue reorder <id> --first | --before <id>`** — permutes the pending segment of the queue without touching completed / in-progress / review-pending rows. Refuses if the task or the `--before` target is not pending. Replaces the ad-hoc `jq` queue-mutation that breath-gate misorderings forced twice this release cycle.
+
+### Internal
+
+- Gitignore now explicitly matches `*.bak` and `*.bak[0-9]*` to keep ad-hoc queue backups out of diffs.
+- `evaluateCheckpoint` split-tested: 11 unit tests covering feature/fix/tidy/chore × DoD complete/incomplete × no-task.
+
 ## [0.5.0] - 2026-04-16
 
 ### Added — Hook Layer
