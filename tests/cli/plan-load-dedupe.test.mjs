@@ -138,3 +138,22 @@ test('plan load prints skipped-count message when completed tasks are deduped', 
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('plan load recognises (fix) task type', () => {
+  const dir = freshSandbox()
+  try {
+    const planPath = join(dir, '.dohyun', 'plans', 'fix.md')
+    writeFileSync(
+      planPath,
+      '# Fix plan\n\n### T1: Stop hook bugfix (fix)\n- [ ] write test\n- [ ] implement fix\n'
+    )
+    run(['plan', 'load', planPath], dir)
+    const q = readQueue(dir)
+    const pending = q.tasks.filter(t => t.status === 'pending')
+    assert.equal(pending.length, 1, 'should load one task')
+    assert.equal(pending[0].type, 'fix', 'type should be fix')
+    assert.equal(pending[0].dod.length, 2)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

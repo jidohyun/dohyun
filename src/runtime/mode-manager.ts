@@ -77,7 +77,7 @@ export function suggestTidy(
   completedTaskType: TaskType,
   currentMode: string | null
 ): TidySuggestion {
-  if (completedTaskType === 'feature' && currentMode !== 'tidy') {
+  if ((completedTaskType === 'feature' || completedTaskType === 'fix') && currentMode !== 'tidy') {
     return {
       suggest: true,
       reason: 'Feature complete. Consider a tidy pass — refactor, reduce coupling, improve naming.',

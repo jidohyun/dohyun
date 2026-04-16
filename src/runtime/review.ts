@@ -31,7 +31,7 @@ export function rejectTransition(task: Task, reopens: readonly string[]): Task {
  * chore: infra-only, trust the green bar.
  */
 export function requiresReview(task: Task): boolean {
-  return task.type === 'feature'
+  return task.type === 'feature' || task.type === 'fix'
 }
 
 /** Write a review-request markdown file under .dohyun/reviews/<task-id>.md. */

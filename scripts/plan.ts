@@ -18,8 +18,8 @@ function parsePlanFile(content: string): ParsedTask[] {
   let current: ParsedTask | null = null
 
   for (const line of lines) {
-    // Match ### T1: Title (feature) / (tidy) / (chore)
-    const taskMatch = line.match(/^###\s+T\d+:\s+(.+?)\s+\((feature|tidy|chore)\)\s*$/)
+    // Match ### T1: Title (feature) / (tidy) / (chore) / (fix)
+    const taskMatch = line.match(/^###\s+T\d+:\s+(.+?)\s+\((feature|tidy|chore|fix)\)\s*$/)
     if (taskMatch) {
       if (current) tasks.push(current)
       current = {

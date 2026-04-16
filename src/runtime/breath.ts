@@ -22,7 +22,7 @@ export function shouldBlockFeatureStart(
   next: Pick<Task, 'type'> | null,
   breath: BreathState,
 ): boolean {
-  if (!next || next.type !== 'feature') return false
+  if (!next || (next.type !== 'feature' && next.type !== 'fix')) return false
   return breath.featuresSinceTidy >= BREATH_LIMIT
 }
 
@@ -46,7 +46,7 @@ function countFeaturesSinceTidy(tasks: readonly Task[]): number {
   for (let i = done.length - 1; i >= 0; i--) {
     const t = done[i]
     if (t.type === 'tidy') return count
-    if (t.type === 'feature') count++
+    if (t.type === 'feature' || t.type === 'fix') count++
     // chore is neutral — does not increment, does not reset
   }
   return count

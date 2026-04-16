@@ -69,7 +69,7 @@ export function evaluateCheckpoint(
   }
 
   // DoD complete — tidy/chore can stop immediately, feature needs approval.
-  const needsApproval = currentTask.type === 'feature'
+  const needsApproval = currentTask.type === 'feature' || currentTask.type === 'fix'
 
   if (!needsApproval) {
     const pending = continuationInfo.pendingCount

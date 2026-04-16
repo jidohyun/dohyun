@@ -51,7 +51,7 @@ export interface LastRunState {
 
 export type TaskStatus = 'pending' | 'in_progress' | 'review-pending' | 'completed' | 'failed' | 'cancelled'
 export type TaskPriority = 'low' | 'normal' | 'high' | 'critical'
-export type TaskType = 'feature' | 'tidy' | 'chore'
+export type TaskType = 'feature' | 'tidy' | 'chore' | 'fix'
 
 export interface Task {
   id: string
