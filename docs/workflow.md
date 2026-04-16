@@ -26,6 +26,7 @@ Follow the plan. Small diffs. Verify after each step.
 - Update `.dohyun/runtime/current-task.json` as you work
 - Stop hook re-injects prompt if unfinished tasks remain
 - The boulder never stops until verification passes
+- Persist cross-session crib notes with `dohyun hot write "…"` — the session-start hook echoes the hot cache on stderr so the next launch reboots with the same context.
 
 ## 4. Verify (`/review`)
 

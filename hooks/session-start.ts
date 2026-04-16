@@ -37,12 +37,13 @@ async function main() {
   // Log session start
   await appendLog('session-start', `Session ${sid} started at ${cwd}`, cwd)
 
-  // Output hot cache if available
+  // Output hot cache if available. Stderr (not stdout) so Claude Code
+  // treats the block as context to re-inject rather than tool output.
   const hot = await readText(paths.hot(cwd))
   if (hot && !hot.includes('No session context yet')) {
-    console.log('[dohyun] === HOT CACHE ===')
-    console.log(hot.trim())
-    console.log('[dohyun] === END HOT CACHE ===')
+    console.error('[dohyun] === HOT CACHE ===')
+    console.error(hot.trim())
+    console.error('[dohyun] === END HOT CACHE ===')
   }
 
   // Check for unfinished work
