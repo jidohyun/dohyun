@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.8.0] - 2026-04-16
+
+### Added
+
+- **`dohyun plan new <filename>`** — drop a new plan file into `.dohyun/plans/` (or any path with `/` in it) pre-filled from the skeleton template. Prevents the formatting mistakes that made me write each plan by hand and still occasionally fail `plan lint` until the fifth edit. `--force` overwrites; otherwise refuses if the file exists.
+- **`templates/plan-skeleton.md`** — the skeleton itself. Ships in the package. Lints clean (error 0, warn 0), so `plan new` + immediate `plan lint` always passes.
+- Onboarding guide now leads with `dohyun plan new` instead of a copy-paste markdown block.
+
+### Rationale
+
+Over the course of 8 releases this session, I wrote ~10 plan files by hand. Every fresh plan had to remember the heading format (`### T1: Title (feature)`), the DoD bullet syntax, and the optional `**Files:**` line. `plan new` collapses that into a single command and makes the harness trivially extensible — anyone can edit `templates/plan-skeleton.md` to match their house style.
+
 ## [0.7.2] - 2026-04-16
 
 ### Added — Dogfood Fixes
