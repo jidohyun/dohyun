@@ -15,6 +15,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.6.0] - 2026-04-16
+
+### Added
+
+- **Hot cache TTL (`scripts/hot.ts`)** — `hotRead` now filters out timestamped entries older than 7 days by default. Untimestamped lines (user-authored permanent notes) are always preserved. `dohyun hot show` appends `(N expired entries hidden)` when the filter dropped anything. `ttlMs` override available for tests and callers with different freshness needs.
+- **`dohyun metrics` CLI (`scripts/metrics.ts`)** — queue-derived report, no LLM:
+  - Totals by task type: feature / tidy / chore / fix
+  - In-queue status breakdown
+  - Avg DoD size for completed tasks
+  - Breath cycle: completed features+fixes per completed tidy (null if no tidies yet)
+  - Completed-in-last-7-days count
+  - On this repo at cut: 38 completed, breath cycle 2.0, avg DoD 5.0.
+
+### Tests
+
+- 4 hot-TTL unit tests (fresh preserved, stale dropped, untimestamped preserved, ttlMs override, all-stale → null).
+- 4 metrics CLI tests with seeded queue fixtures (totals, avg DoD, breath cycle, empty-queue).
+- 12 guard-signal unit tests locking the existing `detectLoop` / `detectScopeCreep` / `detectCheat` semantics before any future tuning.
+
+### Notes
+
+- No behaviour change to guard thresholds — tests only. Dry-run against this session's log produced zero false positives across 5 heavily-edited files, so the current defaults look well-calibrated for the "breathe in / breathe out" cadence.
+
 ## [0.5.2] - 2026-04-16
 
 ### Added — Plan Linter
