@@ -25,6 +25,7 @@ import { getBreathState } from '../src/runtime/breath.js'
 import { appendLog } from '../src/state/write.js'
 import { readJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
+import { detectRepeatedWarnings } from '../src/runtime/learn.js'
 import type { CurrentTaskState } from '../src/runtime/contracts.js'
 
 async function main() {
@@ -40,6 +41,9 @@ async function main() {
   const currentTask = currentTaskState?.task ?? null
   const action = evaluateCheckpoint(currentTask, continuationInfo, breath)
   const hookOutput = formatCheckpointForHook(action)
+
+  // Run learning candidate detection — must not block the stop flow.
+  try { await detectRepeatedWarnings(cwd) } catch { /* swallow */ }
 
   if (hookOutput.decision === 'block') {
     await appendLog('checkpoint', `${action.type}: ${hookOutput.reason?.split('\n')[0]}`, cwd)
