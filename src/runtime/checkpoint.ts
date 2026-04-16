@@ -68,10 +68,21 @@ export function evaluateCheckpoint(
     }
   }
 
-  // DoD complete — checkpoint! Ask for developer approval
+  // DoD complete — tidy/chore can stop immediately, feature needs approval.
+  const needsApproval = currentTask.type === 'feature'
+
+  if (!needsApproval) {
+    const pending = continuationInfo.pendingCount
+    const suffix = pending > 0 ? ` ${pending} more task(s) in queue.` : ''
+    return {
+      type: 'done',
+      message: `Task "${currentTask.title}" (${currentTask.type}) — all DoD checked. Ready to complete.${suffix}`,
+    }
+  }
+
   const tidy = suggestTidy(currentTask.type, null)
   const lines = [
-    `[dohyun checkpoint] Feature "${currentTask.title}" — all DoD items checked.`,
+    `[dohyun checkpoint] Task "${currentTask.title}" — all DoD items checked.`,
     '',
     'DoD:',
     ...currentTask.dod.map(item => `  [x] ${item}`),
