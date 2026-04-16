@@ -98,6 +98,11 @@ async function main() {
       await runLearn(args, workDir)
       break
     }
+    case 'metrics': {
+      const { runMetrics } = await import('../../scripts/metrics.js')
+      await runMetrics(args, workDir)
+      break
+    }
     default: {
       console.log(`
 dohyun — Personal AI Workflow Harness (Augmented Coding)
@@ -130,6 +135,7 @@ Usage:
   dohyun hot clear           Empty the hot cache
   dohyun learn add "<text>"  Save a manual learning candidate (human review required)
   dohyun learn list          List learning candidates newest first
+  dohyun metrics             Show task-type totals, avg DoD size, breath cycle
 `)
       if (command && command !== 'help' && command !== '--help') {
         console.error(`Unknown command: ${command}`)
