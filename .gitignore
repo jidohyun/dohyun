@@ -3,6 +3,8 @@ dist/
 *.tsbuildinfo
 *.tgz
 .DS_Store
+*.bak
+*.bak[0-9]*
 
 # Generated from template during setup
 .claude/settings.json
