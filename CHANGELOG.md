@@ -15,6 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.7.1] - 2026-04-16
+
+### Added
+
+- **First public npm release** — `@jidohyun/dohyun` is now installable via `npm install -g @jidohyun/dohyun` or `npx @jidohyun/dohyun`. A-stage "skip publish" policy is lifted.
+- **LICENSE file** — canonical MIT text with jidohyun copyright (package.json already declared MIT but the file was missing).
+- **`docs/publish.md`** — redistribution runbook: version bump → CHANGELOG → tag → `npm pack --dry-run` → `npm publish --access public` → fresh-dir verification.
+
+### Package
+
+- 228 files, 95 kB packed, 359 kB unpacked.
+- Ships: `dist/`, `skills/`, `.claude/commands/`, `.claude/settings.template.json`, `docs/`, `prompts/`, `templates/`, `CLAUDE.md`, `AGENTS.md`, `README.md`, `LICENSE`.
+
 ## [0.7.0] - 2026-04-16
 
 ### Added — Quality Net
