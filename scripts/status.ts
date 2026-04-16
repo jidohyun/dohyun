@@ -1,12 +1,46 @@
 import { readSession, readModes, readCurrentTask, readQueue } from '../src/state/read.js'
 
-export async function runStatus(cwd: string): Promise<void> {
+export interface StatusOptions {
+  json?: boolean
+}
+
+export async function runStatus(cwd: string, opts: StatusOptions = {}): Promise<void> {
   const [session, modes, currentTask, queue] = await Promise.all([
     readSession(cwd),
     readModes(cwd),
     readCurrentTask(cwd),
     readQueue(cwd),
   ])
+
+  if (opts.json) {
+    const tasks = queue?.tasks ?? []
+    const active = currentTask?.task ?? null
+    const payload = {
+      session: session
+        ? { active: session.status === 'active', id: session.sessionId, status: session.status }
+        : null,
+      mode: modes?.activeMode ?? null,
+      activeTask: active
+        ? {
+            id: active.id,
+            title: active.title,
+            type: active.type,
+            status: active.status,
+            dodTotal: active.dod.length,
+            dodChecked: active.dodChecked.length,
+          }
+        : null,
+      queue: {
+        pending: tasks.filter(t => t.status === 'pending').length,
+        inProgress: tasks.filter(t => t.status === 'in_progress').length,
+        reviewPending: tasks.filter(t => t.status === 'review-pending').length,
+        completed: tasks.filter(t => t.status === 'completed').length,
+        cancelled: tasks.filter(t => t.status === 'cancelled').length,
+      },
+    }
+    process.stdout.write(JSON.stringify(payload) + '\n')
+    return
+  }
 
   console.log('=== dohyun status ===\n')
 

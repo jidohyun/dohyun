@@ -41,7 +41,8 @@ async function main() {
     }
     case 'status': {
       const { runStatus } = await import('../../scripts/status.js')
-      await runStatus(workDir)
+      const json = args.includes('--json')
+      await runStatus(workDir, { json })
       break
     }
     case 'cancel': {
@@ -113,6 +114,7 @@ Usage:
   dohyun doctor             Harness health + hook installation check
   dohyun doctor --fix       Auto-repair missing state files and hook drift
   dohyun status             Show current session state
+  dohyun status --json      Same, as machine-readable JSON
   dohyun plan               List plans
   dohyun plan load <file>   Load plan into queue
   dohyun plan lint <file>   Validate plan syntax without enqueuing
