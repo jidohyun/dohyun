@@ -60,6 +60,51 @@ function parsePlanFile(content: string): ParsedTask[] {
 export async function runPlan(args: string[], cwd: string): Promise<void> {
   const subcommand = args[0]
 
+  if (subcommand === 'new') {
+    const filename = args[1]
+    const force = args.includes('--force')
+    if (!filename) {
+      console.error('Usage: dohyun plan new <filename.md> [--force]')
+      process.exitCode = 1
+      return
+    }
+
+    const { resolve, dirname, isAbsolute } = await import('node:path')
+    const { fileURLToPath } = await import('node:url')
+    const { readFile, writeFile, mkdir } = await import('node:fs/promises')
+    const { existsSync } = await import('node:fs')
+
+    // Resolve target: bare filename goes under .dohyun/plans/, otherwise as-is.
+    const target = isAbsolute(filename) || filename.includes('/')
+      ? resolve(cwd, filename)
+      : resolve(cwd, '.dohyun', 'plans', filename)
+
+    if (existsSync(target) && !force) {
+      console.error(`File already exists: ${target}`)
+      console.error('Use --force to overwrite.')
+      process.exitCode = 1
+      return
+    }
+
+    // Resolve the skeleton template, relative to the compiled script location.
+    const here = dirname(fileURLToPath(import.meta.url))
+    const skeletonPath = resolve(here, '..', '..', 'templates', 'plan-skeleton.md')
+    let skeleton: string
+    try {
+      skeleton = await readFile(skeletonPath, 'utf8')
+    } catch {
+      console.error(`Plan skeleton template missing at ${skeletonPath}`)
+      process.exitCode = 1
+      return
+    }
+
+    await mkdir(dirname(target), { recursive: true })
+    await writeFile(target, skeleton, 'utf8')
+    console.log(`Created: ${target}`)
+    console.log('Next: edit the placeholders, then `dohyun plan load <file>`.')
+    return
+  }
+
   if (subcommand === 'lint') {
     const filePath = args[1]
     if (!filePath) {

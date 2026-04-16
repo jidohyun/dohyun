@@ -114,6 +114,7 @@ Usage:
   dohyun plan               List plans
   dohyun plan load <file>   Load plan into queue
   dohyun plan lint <file>   Validate plan syntax without enqueuing
+  dohyun plan new <name>    Create a new plan file from the skeleton (--force to overwrite)
   dohyun queue              Show queue with DoD progress (hides cancelled)
   dohyun queue --all        Show cancelled tasks too
   dohyun queue clean        Remove cancelled tasks from queue
