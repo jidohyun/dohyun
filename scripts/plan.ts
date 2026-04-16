@@ -2,6 +2,7 @@ import { readText } from '../src/utils/fs.js'
 import { enqueueTask, cancelAllTasks, pruneCancelledTasks, taskSignature } from '../src/runtime/queue.js'
 import { readQueue } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
+import { lintPlan } from '../src/runtime/lint.js'
 import type { TaskType } from '../src/runtime/contracts.js'
 
 interface ParsedTask {
@@ -57,6 +58,44 @@ function parsePlanFile(content: string): ParsedTask[] {
 
 export async function runPlan(args: string[], cwd: string): Promise<void> {
   const subcommand = args[0]
+
+  if (subcommand === 'lint') {
+    const filePath = args[1]
+    if (!filePath) {
+      console.error('Usage: dohyun plan lint <plan-file.md>')
+      process.exitCode = 1
+      return
+    }
+
+    const content = await readText(filePath)
+    if (content === null || content === undefined) {
+      console.error(`Plan file not found: ${filePath}`)
+      process.exitCode = 1
+      return
+    }
+
+    const issues = lintPlan(content)
+    const errors = issues.filter(i => i.level === 'error')
+    const warns = issues.filter(i => i.level === 'warn')
+
+    for (const issue of warns) {
+      console.log(`warn:${issue.line}: ${issue.message}`)
+    }
+    for (const issue of errors) {
+      console.error(`error:${issue.line}: ${issue.message}`)
+    }
+
+    if (issues.length === 0) {
+      console.log(`OK — no issues found in ${filePath}`)
+    } else {
+      console.log(`\n${errors.length} error(s), ${warns.length} warning(s)`)
+    }
+
+    if (errors.length > 0) {
+      process.exitCode = 1
+    }
+    return
+  }
 
   if (subcommand === 'load') {
     const filePath = args[1]

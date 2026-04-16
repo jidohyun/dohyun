@@ -108,6 +108,7 @@ Usage:
   dohyun status             Show current session state
   dohyun plan               List plans
   dohyun plan load <file>   Load plan into queue
+  dohyun plan lint <file>   Validate plan syntax without enqueuing
   dohyun queue              Show queue with DoD progress (hides cancelled)
   dohyun queue --all        Show cancelled tasks too
   dohyun queue clean        Remove cancelled tasks from queue

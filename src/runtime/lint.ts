@@ -115,14 +115,18 @@ export function lintPlan(content: string): LintIssue[] {
 }
 
 function lintVerifyTag(line: string, lineNo: number, issues: LintIssue[]): void {
-  const m = VERIFY_TAG_ANY.exec(line)
+  // Strip backtick-wrapped spans so inline-code examples (e.g. documentation
+  // snippets like `@verify:file-exists(...)`) are ignored.  The runVerify
+  // engine only acts on unquoted tags, so the linter should too.
+  const sanitised = line.replace(/`[^`]*`/g, '')
+  const m = VERIFY_TAG_ANY.exec(sanitised)
   if (!m) return
   const kind = m[1]
   const arg = m[2] ?? ''
   const hasParens = m[2] !== undefined
 
   // Use parseVerifyTag to confirm kind is recognised (null = unknown).
-  const probe = parseVerifyTag(line)
+  const probe = parseVerifyTag(sanitised)
   if (!probe) {
     issues.push({
       level: 'error',
