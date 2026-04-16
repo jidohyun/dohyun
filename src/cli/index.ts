@@ -127,7 +127,7 @@ Usage:
   dohyun note "…"           Add a quick note
   dohyun tidy suggest       List files over the LOC threshold in recent feat commits
   dohyun review run <id>    Print a review request to stdout
-  dohyun review approve <id>              Approve review, task → completed
+  dohyun review approve <id> | --last     Approve review (--last = most recent)
   dohyun review reject <id> --reopen "<DoD>"   Reject, re-open DoD item(s)
   dohyun hot write "<text>"  Overwrite the hot cache (carries across sessions)
   dohyun hot append "<text>" Append a timestamped line to the hot cache

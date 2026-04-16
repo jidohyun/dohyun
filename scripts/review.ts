@@ -25,7 +25,7 @@ export async function runReview(args: string[], cwd: string): Promise<void> {
 function usage(): void {
   console.error('Usage:')
   console.error('  dohyun review run <id>')
-  console.error('  dohyun review approve <id>')
+  console.error('  dohyun review approve <id> | --last')
   console.error('  dohyun review reject <id> --reopen "<DoD text>"')
   process.exitCode = 1
 }
@@ -44,7 +44,24 @@ async function runRun(id: string | undefined, cwd: string): Promise<void> {
 async function runApprove(id: string | undefined, cwd: string): Promise<void> {
   if (!id) return usage()
   const queue = await readJson<QueueState>(paths.queue(cwd))
-  const task = queue?.tasks.find(t => t.id === id)
+
+  let task
+  let resolvedId = id
+  if (id === '--last') {
+    const pending = queue?.tasks.filter(t => t.status === 'review-pending') ?? []
+    if (pending.length === 0) {
+      console.error('No review-pending task to approve.')
+      process.exitCode = 1
+      return
+    }
+    // Pick the most recently updated pending task.
+    pending.sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))
+    task = pending[0]
+    resolvedId = task.id
+  } else {
+    task = queue?.tasks.find(t => t.id === id)
+  }
+
   if (!task) {
     console.error(`Task not found: ${id}`)
     process.exitCode = 1
@@ -58,9 +75,9 @@ async function runApprove(id: string | undefined, cwd: string): Promise<void> {
   const updated = approveTransition(task)
   await writeJson(paths.queue(cwd), {
     ...queue!,
-    tasks: queue!.tasks.map(t => t.id === id ? updated : t),
+    tasks: queue!.tasks.map(t => t.id === resolvedId ? updated : t),
   })
-  await appendLog('review-approved', `Approved "${task.title}" (${id})`, cwd)
+  await appendLog('review-approved', `Approved "${task.title}" (${resolvedId})`, cwd)
   console.log(`Approved: "${task.title}"`)
 }
 
