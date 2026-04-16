@@ -102,7 +102,25 @@ export async function runSetup(cwd: string, opts: SetupOptions = {}): Promise<vo
   // Install Claude Code integration (.claude/settings.json + skills + commands)
   await installClaudeIntegration(cwd, opts)
 
+  await maybeHintTypeModule(cwd)
+
   console.log('\nSetup complete.')
+}
+
+async function maybeHintTypeModule(cwd: string): Promise<void> {
+  const { resolve } = await import('node:path')
+  const pkgPath = resolve(cwd, 'package.json')
+  if (!await fileExists(pkgPath)) return
+  try {
+    const { readFile } = await import('node:fs/promises')
+    const raw = await readFile(pkgPath, 'utf-8')
+    const pkg = JSON.parse(raw) as { type?: string }
+    if (pkg.type !== 'module') {
+      console.log('  tip: add "type":"module" to package.json for ES module support')
+    }
+  } catch {
+    // Malformed JSON or read failure — silently skip; setup itself is still ok.
+  }
 }
 
 async function installClaudeIntegration(cwd: string, opts: SetupOptions): Promise<void> {
