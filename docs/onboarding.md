@@ -31,10 +31,22 @@ setup이 `tip: add "type":"module" to package.json ...` 를 출력했다면, `pa
 
 ## 3. 첫 plan 작성 (2min)
 
-`.dohyun/plans/first.md`:
+스켈레톤으로 시작:
+
+```bash
+dohyun plan new first.md
+```
+
+`.dohyun/plans/first.md` 가 생성된다. 열어서 placeholder(제목, Goal, DoD 등)를 실제 작업 내용으로 채운다. 예시:
 
 ```markdown
 # Plan: first feature
+
+## Goal
+greet("world") 가 "Hello, world!" 를 반환하는 함수 하나.
+
+## Risks
+- [ ] ES module 설정 이슈 — package.json에 type=module 필요
 
 ### T1: greet.js 구현 (feature)
 **DoD:**
