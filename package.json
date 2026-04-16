@@ -1,6 +1,6 @@
 {
   "name": "@jidohyun/dohyun",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Personal AI workflow harness with Kent Beck's Augmented Coding principles",
   "keywords": [
     "claude-code",

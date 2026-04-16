@@ -15,6 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.5.2] - 2026-04-16
+
+### Added — Plan Linter
+
+- **`dohyun plan lint <file>`** — deterministic plan file validator that runs the same parser as `plan load` plus extra rules:
+  - **error** — no tasks at all, `### T1:` heading without `(type)`, unknown task type, unknown `@verify:kind`, missing required argument to `@verify:file-exists` or `@verify:grep`.
+  - **warn** — task with empty DoD, duplicate task titles.
+  - Exit 1 on any error; warnings alone still exit 0.
+  - Issues inside backtick-wrapped spans (e.g. documentation examples like `` `@verify:file-exists(...)` ``) are ignored, matching runVerify's actual behaviour.
+- Internal: new pure `lintPlan(content)` function in `src/runtime/lint.ts` returns `{ level, line, message }` issues so the CLI wrapper is trivially separable from the rule engine.
+
+### Tests
+
+- 10 lint unit tests (valid plan, missing task type, unknown type, empty DoD, duplicate titles, line-number contract, verify tag happy path, unknown kind, empty file-exists arg, empty grep arg).
+- 4 CLI integration tests (valid → exit 0, error → exit 1, warn-only → exit 0, file-missing → exit 1).
+
 ## [0.5.1] - 2026-04-16
 
 ### Fixed
