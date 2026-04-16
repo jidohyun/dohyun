@@ -87,6 +87,11 @@ async function main() {
       await runLog(args, workDir)
       break
     }
+    case 'hot': {
+      const { runHot } = await import('../../scripts/hot.js')
+      await runHot(args, workDir)
+      break
+    }
     default: {
       console.log(`
 dohyun — Personal AI Workflow Harness (Augmented Coding)
@@ -111,6 +116,10 @@ Usage:
   dohyun review run <id>    Print a review request to stdout
   dohyun review approve <id>              Approve review, task → completed
   dohyun review reject <id> --reopen "<DoD>"   Reject, re-open DoD item(s)
+  dohyun hot write "<text>"  Overwrite the hot cache (carries across sessions)
+  dohyun hot append "<text>" Append a timestamped line to the hot cache
+  dohyun hot show            Print the hot cache contents
+  dohyun hot clear           Empty the hot cache
 `)
       if (command && command !== 'help' && command !== '--help') {
         console.error(`Unknown command: ${command}`)
