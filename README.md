@@ -61,6 +61,7 @@ dohyun task complete               # finishes current, ready for next
 dohyun note "Decided to use zod for validation"
 dohyun log --tail 20               # recent activity
 dohyun doctor                      # health check
+dohyun doctor --fix                # auto-repair missing state / hook drift
 ```
 
 ## Quick Start
