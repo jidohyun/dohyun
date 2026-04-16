@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.4.0] - 2026-04-16
+
+### Fixed
+
+- **`plan load` dedupe** — re-running a plan file against a queue that already had completed or review-pending tasks used to pile an identical pending set on top of the history. Plan load now keeps the completed / review-pending history intact and skips incoming entries whose `(title, dod)` signature is already represented, printing `N skipped (already completed)`. Prior behavior wiped pending/cancelled but left every completed row plus re-enqueued everything, so one cancel + reload produced, e.g., 11 completed + 7 duplicate pending.
+- **`queue` renderer surfaces `review-pending`** — feature tasks awaiting approval used to render with the plain `[ ]` pending marker and were excluded from the header count, making it easy to read "0 pending" as "queue clear". The header now adds a `N review-pending` segment when any exist, and those rows render with `[?]`.
+
+### Added — Hot Cache
+
+- `dohyun hot write "<text>"` / `append` / `show` / `clear` — small, developer-maintained crib note that lives at `.dohyun/memory/hot.md` (git-ignored per project).
+- `session-start` hook now echoes the hot cache body on **stderr** instead of stdout. Claude Code treats hook stderr as system-reminder context, so the next session reboots with the same working memory. Stdout-based injection never actually re-entered the model's context.
+- `docs/workflow.md` gained a Hot Cache section covering when to write, how reload works, and a terseness reminder (the whole file competes for context budget on every launch).
+
+### Refactored
+
+- `scripts/queue.ts` now uses two exported pure helpers (`bucketize`, `iconFor`) plus a `STATUS_ICONS` lookup — no more inline `filter` + nested ternary for the five display buckets. Adding a new task state is a single-line edit.
+- `scripts/hot.ts` exposes `hotWrite` / `hotAppend` / `hotRead` / `hotClear` as standalone async helpers; `runHot` is now a thin dispatcher on top.
+- `src/runtime/queue.ts` gained a pure `taskSignature(title, dod)` helper used by the plan-load dedupe.
+
 ## [0.3.1] - 2026-04-15
 
 ### Fixed
