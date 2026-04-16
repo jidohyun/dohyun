@@ -73,6 +73,6 @@
 - [ ] CHANGELOG.md에 `## [0.4.0]` 섹션 추가: plan dedupe fix, queue review-pending bucket, hot cache commands, session-start hot 재주입
 - [ ] `package.json` version 0.3.1 → 0.4.0
 - [ ] `npm test` 66+ GREEN
-- [ ] `git tag v0.4.0` **사용자 승인 후에만** (plan 메타규칙)
-- [ ] `npm publish` **사용자 승인 후에만**
+- [ ] `git tag v0.4.0` 사용자 승인 하에 실행 및 origin push
+- [ ] npm publish는 이번 릴리스에서 skip (사용자 결정 — 다음 릴리스나 수동 운영으로 이관)
 **Files:** `CHANGELOG.md` `package.json`
