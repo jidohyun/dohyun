@@ -65,15 +65,21 @@ export async function runDoctor(cwd: string): Promise<void> {
   if (hasSettings) {
     const settings = await readJson<{ hooks?: Record<string, unknown> }>(settingsPath)
     const hookEvents = settings?.hooks ? Object.keys(settings.hooks) : []
-    const expectedEvents = ['SessionStart', 'PreToolUse', 'Stop']
+
+    const templatePath = resolve(cwd, '.claude', 'settings.template.json')
+    const template = await readJson<{ hooks?: Record<string, unknown> }>(templatePath)
+    const expectedEvents = template?.hooks
+      ? Object.keys(template.hooks)
+      : ['SessionStart', 'PreToolUse', 'Stop']
+
     const missingEvents = expectedEvents.filter(e => !hookEvents.includes(e))
 
     checks.push({
       name: 'hooks events',
       ok: missingEvents.length === 0,
       detail: missingEvents.length === 0
-        ? `${hookEvents.join(', ')} registered`
-        : `missing: ${missingEvents.join(', ')}`,
+        ? `${expectedEvents.length} hook(s) registered — ${hookEvents.join(', ')}`
+        : `missing: ${missingEvents.join(', ')} — Run \`dohyun setup --force-settings\` to refresh`,
     })
   }
 

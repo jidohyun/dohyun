@@ -22,6 +22,28 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{DOHYUN_ROOT}}/dist/hooks/user-prompt-submit.js"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node {{DOHYUN_ROOT}}/dist/hooks/pre-compact.js"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
