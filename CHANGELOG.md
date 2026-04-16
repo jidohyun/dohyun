@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.7.0] - 2026-04-16
+
+### Added — Quality Net
+
+- **End-to-end hook tests (`tests/e2e/hook-cycle.test.mjs`)** — 5 scenarios spawn each hook binary (`dist/hooks/*.js`) as a subprocess against a real sandboxed `dohyun setup`. Covers user-prompt-submit active-task injection, stop-continue block on unchecked feature, stop-continue non-block on completed tidy (the 0.5.1 regression), pre-compact snapshot creation, and session-start resume reporting. First automated guard against the infinite-loop class of bugs.
+- **`dohyunError` / `dohyunWarn` utils (`src/utils/error.ts`)** — standardised `[dohyun:code] message` stderr format with optional `Hint:` line. dohyunError sets `process.exitCode=1`; dohyunWarn does not. Gradual migration: 3 user-facing error paths moved (plan load/lint "not found", task complete "DoD incomplete"), 73 remain untouched.
+- **Schema migration hook (`src/runtime/migrate.ts`)** — `migrateQueue(raw)` gatekeeps all queue reads. Unknown types, missing version, newer-than-known versions all throw with helpful messages instead of silently loading corrupt state. Current version 1 is identity. When v2 arrives, add a single branch in migrate.ts; call sites stay unchanged.
+- `readQueue` now routes through migrateQueue before zod validation.
+
+### Tests
+
+- 5 E2E scenarios (hook-cycle)
+- 4 error-util unit tests (code+message, hint line, no hint, dohyunWarn vs dohyunError)
+- 6 schema migration tests (v1 identity, extra field preservation, null/undefined reject, missing version, newer version, readQueue integration)
+
 ## [0.6.0] - 2026-04-16
 
 ### Added
