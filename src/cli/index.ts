@@ -29,7 +29,8 @@ async function main() {
     }
     case 'setup': {
       const { runSetup } = await import('../../scripts/setup.js')
-      await runSetup(workDir)
+      const forceSettings = args.includes('--force-settings')
+      await runSetup(workDir, { forceSettings })
       break
     }
     case 'doctor': {

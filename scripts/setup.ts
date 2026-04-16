@@ -46,7 +46,11 @@ async function writeTextIfMissing(path: string, content: string): Promise<boolea
   return true
 }
 
-export async function runSetup(cwd: string): Promise<void> {
+export interface SetupOptions {
+  forceSettings?: boolean
+}
+
+export async function runSetup(cwd: string, opts: SetupOptions = {}): Promise<void> {
   console.log('Setting up .dohyun/ harness...\n')
 
   // Create directories
@@ -96,12 +100,12 @@ export async function runSetup(cwd: string): Promise<void> {
   console.log(`  Skipped: ${skipped} file(s) (already exist)`)
 
   // Install Claude Code integration (.claude/settings.json + skills + commands)
-  await installClaudeIntegration(cwd)
+  await installClaudeIntegration(cwd, opts)
 
   console.log('\nSetup complete.')
 }
 
-async function installClaudeIntegration(cwd: string): Promise<void> {
+async function installClaudeIntegration(cwd: string, opts: SetupOptions): Promise<void> {
   const { resolve, dirname } = await import('node:path')
   const { symlink, readFile, writeFile } = await import('node:fs/promises')
   const { fileURLToPath } = await import('node:url')
@@ -128,13 +132,30 @@ async function installClaudeIntegration(cwd: string): Promise<void> {
   let installed = 0
 
   // Render settings.json from template (substitute {{DOHYUN_ROOT}})
-  if (!await fileExists(settingsDst)) {
+  const settingsExists = await fileExists(settingsDst)
+  if (!settingsExists || opts.forceSettings) {
     try {
       const template = await readFile(templateSrc, 'utf-8')
       const rendered = template.replace(/\{\{DOHYUN_ROOT\}\}/g, dohyunRoot)
-      await writeFile(settingsDst, rendered, 'utf-8')
-      installed++
-      console.log(`  Installed: .claude/settings.json (hooks → ${dohyunRoot})`)
+
+      if (settingsExists) {
+        const existing = await readFile(settingsDst, 'utf-8')
+        if (existing === rendered) {
+          console.log('  Settings already up to date — skipped')
+        } else {
+          // Back up current settings before overwriting so custom hooks
+          // can be re-merged by hand if needed.
+          const backupPath = `${settingsDst}.bak`
+          await writeFile(backupPath, existing, 'utf-8')
+          await writeFile(settingsDst, rendered, 'utf-8')
+          installed++
+          console.log(`  Re-rendered: .claude/settings.json (backup → ${backupPath})`)
+        }
+      } else {
+        await writeFile(settingsDst, rendered, 'utf-8')
+        installed++
+        console.log(`  Installed: .claude/settings.json (hooks → ${dohyunRoot})`)
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.log(`  Warning: could not render settings.json: ${msg}`)
