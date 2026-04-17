@@ -256,6 +256,51 @@ defmodule DohyunDaemon.SocketServerTest do
     :gen_tcp.close(sock)
   end
 
+  test "reorder cmd target=first moves task to head", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    ids =
+      for title <- ["a", "b", "c"] do
+        send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{
+          "title" => title, "status" => "pending", "priority" => "normal", "type" => "feature", "dod" => []
+        }}))
+        recv_line(sock)["data"]["task"]["id"]
+      end
+
+    [_a_id, _b_id, c_id] = ids
+
+    send_line(sock, Jason.encode!(%{"cmd" => "reorder", "args" => %{
+      "taskId" => c_id, "target" => %{"mode" => "first"}
+    }}))
+    response = recv_line(sock)
+    assert response["ok"] == true
+
+    send_line(sock, Jason.encode!(%{"cmd" => "status"}))
+    status = recv_line(sock)
+    titles = status["data"]["queue"]["tasks"] |> Enum.map(& &1["title"])
+    assert titles == ["c", "a", "b"]
+
+    :gen_tcp.close(sock)
+  end
+
+  test "reorder cmd reports ok:false / task_not_pending for non-pending task", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{
+      "title" => "done", "status" => "completed", "priority" => "normal", "type" => "feature", "dod" => []
+    }}))
+    task_id = recv_line(sock)["data"]["task"]["id"]
+
+    send_line(sock, Jason.encode!(%{"cmd" => "reorder", "args" => %{
+      "taskId" => task_id, "target" => %{"mode" => "first"}
+    }}))
+    response = recv_line(sock)
+    assert response["ok"] == false
+    assert response["error"] == "task_not_pending"
+
+    :gen_tcp.close(sock)
+  end
+
   test "10 concurrent clients all get responses", %{sock_path: sock_path} do
     parent = self()
     n = 10

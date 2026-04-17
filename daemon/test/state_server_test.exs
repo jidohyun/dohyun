@@ -272,6 +272,53 @@ defmodule DohyunDaemon.StateServerTest do
     end
   end
 
+  describe "reorder_pending" do
+    test "target 'first' moves a pending task to the front of the pending segment", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "p1", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "p2", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "p3", "status" => "pending"}))
+
+      assert :ok = StateServer.reorder_pending(pid, "p3", %{"mode" => "first"})
+      %{"tasks" => tasks} = StateServer.get_queue(pid)
+      assert Enum.map(tasks, & &1["id"]) == ["p3", "p1", "p2"]
+
+      GenServer.stop(pid)
+    end
+
+    test "target 'before' inserts the moved task before the anchor", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "a", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "b", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "c", "status" => "pending"}))
+
+      assert :ok = StateServer.reorder_pending(pid, "c", %{"mode" => "before", "id" => "b"})
+      %{"tasks" => tasks} = StateServer.get_queue(pid)
+      assert Enum.map(tasks, & &1["id"]) == ["a", "c", "b"]
+
+      GenServer.stop(pid)
+    end
+
+    test "non-pending reorder target returns :task_not_pending", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "done", "status" => "completed"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "ok", "status" => "pending"}))
+
+      assert {:error, :task_not_pending} =
+               StateServer.reorder_pending(pid, "done", %{"mode" => "first"})
+
+      GenServer.stop(pid)
+    end
+
+    test "unknown task id returns :task_not_found", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      assert {:error, :task_not_found} =
+               StateServer.reorder_pending(pid, "ghost", %{"mode" => "first"})
+
+      GenServer.stop(pid)
+    end
+  end
+
   describe "schema version" do
     test "preserves version field on enqueue (round-trip v1)", %{harness_root: root, queue_path: qpath} do
       write_queue(qpath, %{"version" => 1, "tasks" => []})

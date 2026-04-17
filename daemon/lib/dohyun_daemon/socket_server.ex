@@ -149,6 +149,18 @@ defmodule DohyunDaemon.SocketServer do
   defp dispatch("prune_cancelled", _envelope, state_server),
     do: format_count_reply(StateServer.prune_cancelled(state_server))
 
+  defp dispatch("reorder", %{"args" => %{"taskId" => task_id, "target" => target}}, state_server)
+       when is_binary(task_id) and is_map(target) do
+    case StateServer.reorder_pending(state_server, task_id, target) do
+      :ok -> %{ok: true, data: %{}}
+      {:error, reason} -> %{ok: false, error: to_string(reason)}
+    end
+  end
+
+  defp dispatch("reorder", _envelope, _state_server) do
+    %{ok: false, error: "invalid_args"}
+  end
+
   defp dispatch(_unknown, _envelope, _state_server) do
     %{ok: false, error: "unknown_cmd"}
   end

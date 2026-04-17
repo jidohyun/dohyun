@@ -279,6 +279,25 @@ export type ReorderTarget =
   | { mode: 'first' }
   | { mode: 'before'; id: string }
 
+function reorderErrorMessage(code: string, taskId: string, target: ReorderTarget): string {
+  switch (code) {
+    case 'task_not_found':
+      return `Task not found: ${taskId}`
+    case 'task_not_pending':
+      return `Task ${taskId.slice(0, 8)} is not pending. Only pending tasks can be reordered.`
+    case 'target_not_found':
+      return target.mode === 'before'
+        ? `Target task not found: ${target.id}`
+        : `Target not found.`
+    case 'target_not_pending':
+      return target.mode === 'before'
+        ? `Target task ${target.id.slice(0, 8)} is not pending.`
+        : `Target is not pending.`
+    default:
+      return `reorder failed: ${code}`
+  }
+}
+
 /**
  * Move a pending task to a new position within the pending segment of the
  * queue.  Non-pending tasks keep their absolute slot — we only permute the
@@ -294,6 +313,13 @@ export async function reorderPending(
   target: ReorderTarget,
   cwd?: string
 ): Promise<void> {
+  const client = new DaemonClient(paths.daemonSock(cwd))
+  const reply = await client.sendCmd('reorder', { taskId, target }).catch(() => null)
+  if (reply && reply.ok) return
+  if (reply && !reply.ok && reply.error && reply.error !== 'unknown_cmd') {
+    throw new Error(reorderErrorMessage(reply.error, taskId, target))
+  }
+
   const queue = await readJson<QueueState>(paths.queue(cwd))
   if (!queue) throw new Error('Queue not found — run `dohyun setup` first.')
 

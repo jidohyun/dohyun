@@ -51,6 +51,10 @@ defmodule DohyunDaemon.StateServer do
     GenServer.call(server, :prune_cancelled)
   end
 
+  def reorder_pending(server \\ __MODULE__, task_id, target) do
+    GenServer.call(server, {:reorder_pending, task_id, target})
+  end
+
   # ── Callbacks ────────────────────────────────────────────────
 
   @impl true
@@ -160,6 +164,18 @@ defmodule DohyunDaemon.StateServer do
     end
   end
 
+  def handle_call({:reorder_pending, task_id, target}, _from, state) do
+    case do_reorder(state.queue["tasks"], task_id, target) do
+      {:ok, new_tasks} ->
+        new_queue = %{state.queue | "tasks" => new_tasks}
+        :ok = persist_atomic(state.queue_path, new_queue)
+        {:reply, :ok, %{state | queue: new_queue}}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
   # ── Internal ─────────────────────────────────────────────────
 
   defp queue_path(root), do: Path.join([root, ".dohyun", "runtime", "queue.json"])
@@ -213,6 +229,53 @@ defmodule DohyunDaemon.StateServer do
   end
 
   defp validate_task(_), do: {:error, :invalid_task}
+
+  # ── Reorder ──────────────────────────────────────────────────
+
+  defp do_reorder(tasks, task_id, target) do
+    with {:ok, task} <- find_task(tasks, task_id),
+         :ok <- ensure_pending(task),
+         {:ok, anchor_id} <- resolve_target(tasks, target) do
+      non_pending = Enum.filter(tasks, &(&1["status"] != "pending"))
+      pending = Enum.filter(tasks, &(&1["status"] == "pending"))
+      without_target = Enum.reject(pending, &(&1["id"] == task_id))
+
+      reordered =
+        case anchor_id do
+          :first ->
+            [task | without_target]
+
+          anchor when is_binary(anchor) ->
+            idx = Enum.find_index(without_target, &(&1["id"] == anchor))
+            {before_anchor, rest} = Enum.split(without_target, idx)
+            before_anchor ++ [task | rest]
+        end
+
+      {:ok, non_pending ++ reordered}
+    end
+  end
+
+  defp find_task(tasks, id) do
+    case Enum.find(tasks, &(&1["id"] == id)) do
+      nil -> {:error, :task_not_found}
+      task -> {:ok, task}
+    end
+  end
+
+  defp ensure_pending(%{"status" => "pending"}), do: :ok
+  defp ensure_pending(_), do: {:error, :task_not_pending}
+
+  defp resolve_target(_tasks, %{"mode" => "first"}), do: {:ok, :first}
+
+  defp resolve_target(tasks, %{"mode" => "before", "id" => id}) do
+    case Enum.find(tasks, &(&1["id"] == id)) do
+      nil -> {:error, :target_not_found}
+      %{"status" => "pending"} -> {:ok, id}
+      _ -> {:error, :target_not_pending}
+    end
+  end
+
+  defp resolve_target(_tasks, _), do: {:error, :invalid_target}
 
   # tmp + rename = atomic on POSIX (same filesystem)
   defp persist_atomic(path, queue) do
