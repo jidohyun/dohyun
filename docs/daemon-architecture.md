@@ -60,9 +60,36 @@ CLI calls follow this order:
 2. On failure, fall through to the existing file-based writer.
 
 This means **absence of the daemon is never an error**; the feature is purely
-additive. Introducing the daemon in production does not require a migration —
-users who never start it see zero change. See the relevant client code in
-`src/runtime/daemon-client.ts` (introduced in T5).
+additive. See the relevant client code in `src/runtime/daemon-client.ts`.
+
+## Auto-spawn (zero-config lifecycle)
+
+Write-path CLI calls (`enqueueTask`, `dequeueTask`, `completeTask`, …) add a
+third step:
+
+3. Fire-and-forget `autoSpawnBackground(cwd)` — spawn a detached daemon
+   process but **do not wait for it**. The current call still completes via
+   the direct-file writer so the user sees zero added latency. The *next*
+   CLI call gets a warm socket.
+
+Suppressors:
+
+- `DOHYUN_NO_DAEMON=1` — skips the spawn step entirely (useful in CI).
+- Daemon already running (pid/socket both alive) — no-op.
+- No runtime available on this host (no bundle + no mix) — silent no-op.
+
+## Idle shutdown
+
+The StateServer starts a `Process.send_after(self(), :check_idle, 30_000)`
+loop on boot. Each `handle_call` bumps `state.last_activity` to the current
+monotonic time. When `:check_idle` fires and
+`monotonic_ms() - last_activity >= idle_ms`, the server calls `:init.stop()`
+which unwinds the supervision tree (SocketServer.terminate cleans up the
+socket file) and the BEAM exits. The TS CLI's `autoSpawnBackground` will
+re-spawn on the next write, so idle shutdown is invisible to users.
+
+Tunable via `DOHYUN_DAEMON_IDLE_MS` (default: 600000 = 10 minutes). Set to
+`0` to disable idle shutdown.
 
 ## When to run the daemon
 

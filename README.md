@@ -137,46 +137,45 @@ State files under `.dohyun/` have stable schemas. They are the contract between:
 
 All schemas are defined in `src/runtime/contracts.ts`.
 
-## Elixir daemon (optional)
+## Elixir daemon
 
-`daemon/` is an optional Elixir/OTP subproject that serializes writes to
+`daemon/` is an Elixir/OTP sidecar that serializes writes to
 `.dohyun/runtime/queue.json` via a single GenServer mailbox. It eliminates
-races when two `dohyun` commands run concurrently in different terminals.
+races when two `dohyun` commands run concurrently (different terminals,
+hooks firing mid-invocation, CI jobs in parallel).
 
-**You do not need it.** The npm package works without BEAM installed, and
-`daemon/` itself is **not published to npm** — it lives only in this repo.
-Turn it on only if you run sessions in parallel or want a stable socket wire
-for external dashboards. To run it, clone this repo.
-
-### Turn it on
-
-```bash
-dohyun daemon start    # spawns the Elixir sidecar in the background
-dohyun daemon status   # running | stopped | stale  (add --json for machines)
-```
+**You don't have to manage it.** The TS CLI will background-spawn the
+daemon the first time you run a write command (`dohyun task start`,
+`dohyun dod check`, `dohyun plan load`, …) and the daemon shuts itself
+down after 10 minutes of idle time. Subsequent CLI calls talk to the
+warm socket; the current call falls through to direct file writes with
+zero added latency.
 
 On supported platforms (macOS Apple Silicon, Linux x64/arm64 glibc) npm
-installs a pre-built release bundle automatically via optional dependencies
-— **no Elixir or mix installation required**. Intel Macs currently fall
-through to the mix-from-source path (see "Platform support" below). `dohyun daemon start` runs the bundled
-`bin/dohyun_daemon start` detached so the vm survives after your shell exits.
+installs a pre-built release bundle via optional dependencies — **no
+Elixir or mix install required**. Intel Macs fall back to mix-from-source.
 
-For other platforms, or for development against the daemon source, install
-Elixir 1.16+ and either:
-
-- clone the repo (`dohyun daemon start` finds the `daemon/` directory
-  automatically), or
-- set `DOHYUN_DAEMON_REPO=<path>` to point at a custom checkout.
-
-The daemon binds `.dohyun/daemon.sock`. The TS CLI auto-detects the socket
-and delegates state mutations through it; if the socket is absent it silently
-falls back to direct file writes.
-
-### Turn it off
+### Explicit control
 
 ```bash
-dohyun daemon stop
+dohyun daemon start    # warm the sidecar proactively (blocks until socket binds)
+dohyun daemon status   # running | stopped | stale  (add --json for machines)
+dohyun daemon stop     # SIGTERM + cleanup
 ```
+
+### Environment variables
+
+| Variable                 | Default | Purpose                                                         |
+|--------------------------|--------:|-----------------------------------------------------------------|
+| `DOHYUN_NO_DAEMON`       |     — | Set to `1` to disable auto-spawn entirely (useful in CI)          |
+| `DOHYUN_DAEMON_IDLE_MS`  | 600000 | Idle window (ms) before the daemon self-terminates                |
+| `DOHYUN_DAEMON_REPO`     |     — | Force a specific mix repo path (dev against a custom checkout)    |
+
+### Development mode
+
+For work on the daemon source itself, clone this repo and install Elixir
+1.16+. `dohyun daemon start` finds `daemon/` automatically, or set
+`DOHYUN_DAEMON_REPO=<path>` for a non-standard layout.
 
 SIGTERM first, then SIGKILL after 8 seconds if the BEAM vm refuses to leave.
 Stale socket/pid files left behind by hard kills are cleaned up on the next
