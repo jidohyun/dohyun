@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned (next)
+
+## [0.12.0] - 2026-04-17
+
+### Added — `dohyun daemon` CLI + doctor integration
+
+- **`dohyun daemon status | start | stop`** — spawn and stop the Elixir
+  sidecar without leaving the TS CLI. `start` uses `detached: true` +
+  `unref()` so the BEAM vm survives after the parent shell exits; logs
+  stream to `.dohyun/logs/daemon.log`.
+- **`--json` on `daemon status`** — machine-readable
+  `{status, pid, socketPath}` for statusline/prompt integrations.
+- **`dohyun doctor` reports the daemon as an advisory row** — stopped is
+  fine (it's optional); running shows the pid; stale socket/pid tells
+  you to run `daemon stop` to clean up. Doctor's exit code doesn't depend
+  on the daemon state.
+- **`DOHYUN_DAEMON_REPO`** env var — override repo auto-detection when the
+  Elixir source lives outside the standard layout.
+
 ### Planned
 
 - Multi-project harness sharing
