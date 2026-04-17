@@ -2,6 +2,13 @@ import type { Task, TaskPriority, TaskStatus, TaskType, QueueState } from './con
 import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now, uuid } from '../utils/time.js'
+import { DaemonClient } from './daemon-client.js'
+
+function isTask(value: unknown): value is Task {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Record<string, unknown>
+  return typeof v.id === 'string' && typeof v.title === 'string' && Array.isArray(v.dod)
+}
 
 /**
  * Stable signature for task equality when comparing a plan re-load
@@ -43,18 +50,37 @@ export async function enqueueTask(
   } = {},
   cwd?: string
 ): Promise<Task> {
-  const queue = await loadQueue(cwd)
-  const task = createTask({
+  const args = {
     title,
     description: options.description ?? null,
     status: options.status ?? 'pending',
     priority: options.priority ?? 'normal',
     type: options.type ?? 'feature',
     dod: options.dod ?? [],
+    metadata: options.metadata ?? {},
+  }
+
+  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+    cmd: 'enqueue',
+    args,
+  })
+  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
+    const t = (delegated as { task: unknown }).task
+    if (isTask(t)) return t
+  }
+
+  const queue = await loadQueue(cwd)
+  const task = createTask({
+    title,
+    description: args.description,
+    status: args.status,
+    priority: args.priority,
+    type: args.type,
+    dod: args.dod,
     dodChecked: [],
     startedAt: null,
     completedAt: null,
-    metadata: options.metadata ?? {},
+    metadata: args.metadata,
   })
 
   await writeJson(paths.queue(cwd), {
