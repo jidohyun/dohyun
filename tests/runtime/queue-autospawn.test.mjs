@@ -81,6 +81,62 @@ test('autoSpawnBackground: returns "already-running" if socket+pid indicate live
   }
 })
 
+test('autoSpawnBackground: emits stderr notice when it actually spawns', async () => {
+  const dir = sandbox()
+  const { existsSync, symlinkSync, mkdirSync: mkd } = await import('node:fs')
+  // Piggyback on the locally-built darwin-arm64 bundle if it exists.
+  const bundleDir = resolve(repoRoot, 'packages', `daemon-${process.platform}-${process.arch}`)
+  if (!existsSync(resolve(bundleDir, 'release', 'bin', 'dohyun_daemon'))) {
+    return  // skip if bundle not built locally
+  }
+  const scope = join(dir, 'node_modules', '@jidohyun')
+  mkd(scope, { recursive: true })
+  symlinkSync(bundleDir, join(scope, `dohyun-daemon-${process.platform}-${process.arch}`), 'dir')
+
+  const saved = process.stderr.write.bind(process.stderr)
+  let captured = ''
+  process.stderr.write = (chunk) => { captured += chunk.toString(); return true }
+
+  try {
+    const result = withoutNoDaemonEnv(() => autoSpawnBackground(dir))
+    assert.equal(result, 'spawned')
+    assert.match(captured, /\[dohyun\] starting background daemon/)
+  } finally {
+    process.stderr.write = saved
+    // Best-effort kill of whatever BEAM we just leaked
+    try {
+      const pidFile = join(dir, '.dohyun', 'daemon.pid')
+      if (existsSync(pidFile)) {
+        const { readFileSync } = await import('node:fs')
+        const pid = parseInt(readFileSync(pidFile, 'utf8').trim(), 10)
+        if (pid > 0) process.kill(pid, 'SIGTERM')
+      }
+    } catch {}
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('autoSpawnBackground: DOHYUN_QUIET=1 suppresses the notice', () => {
+  const dir = sandbox()
+  const saved = process.stderr.write.bind(process.stderr)
+  let captured = ''
+  process.stderr.write = (chunk) => { captured += chunk.toString(); return true }
+  const savedQuiet = process.env.DOHYUN_QUIET
+  process.env.DOHYUN_QUIET = '1'
+
+  try {
+    withoutNoDaemonEnv(() => {
+      autoSpawnBackground(dir, { disableAutoDiscovery: true, daemonRepoOverride: null })
+    })
+    assert.equal(captured, '', 'no stderr output when DOHYUN_QUIET=1')
+  } finally {
+    process.stderr.write = saved
+    if (savedQuiet === undefined) delete process.env.DOHYUN_QUIET
+    else process.env.DOHYUN_QUIET = savedQuiet
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('autoSpawnBackground: returns "unavailable" when no bundle or mix repo is found', () => {
   const dir = sandbox()
   try {

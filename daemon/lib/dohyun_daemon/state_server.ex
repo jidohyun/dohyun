@@ -7,6 +7,7 @@ defmodule DohyunDaemon.StateServer do
   each other's writes.
   """
   use GenServer
+  require Logger
 
   @queue_version 1
 
@@ -203,6 +204,11 @@ defmodule DohyunDaemon.StateServer do
     elapsed = monotonic_ms() - state.last_activity
 
     if state.idle_ms > 0 and elapsed >= state.idle_ms do
+      Logger.info(
+        "[dohyun_daemon] idle shutdown — no activity for #{div(elapsed, 1000)}s " <>
+          "(threshold #{div(state.idle_ms, 1000)}s)"
+      )
+
       # System-level shutdown so the supervisor tree unwinds and the
       # SocketServer terminate/2 callback runs (socket file cleanup).
       :init.stop()

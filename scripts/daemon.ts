@@ -188,6 +188,11 @@ export function autoSpawnBackground(
       stdio: ['ignore', outFd, errFd],
     })
     child.unref()
+
+    if (process.env.DOHYUN_QUIET !== '1') {
+      const mode = execution.kind === 'release' ? 'release' : 'mix'
+      process.stderr.write(`[dohyun] starting background daemon (${mode})\n`)
+    }
   } catch {
     return 'unavailable'
   }
