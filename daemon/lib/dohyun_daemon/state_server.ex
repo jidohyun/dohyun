@@ -10,6 +10,11 @@ defmodule DohyunDaemon.StateServer do
 
   @queue_version 1
 
+  # Default idle window before the daemon shuts itself down. Overridable via
+  # the DOHYUN_DAEMON_IDLE_MS env var.
+  @default_idle_ms 10 * 60 * 1000
+  @default_check_interval_ms 30 * 1000
+
   # ── Public API ────────────────────────────────────────────────
 
   def start_link(opts) do
@@ -55,6 +60,14 @@ defmodule DohyunDaemon.StateServer do
     GenServer.call(server, {:reorder_pending, task_id, target})
   end
 
+  def last_activity(server \\ __MODULE__) do
+    GenServer.call(server, :last_activity)
+  end
+
+  def idle_elapsed_ms(server \\ __MODULE__) do
+    GenServer.call(server, :idle_elapsed_ms)
+  end
+
   # ── Callbacks ────────────────────────────────────────────────
 
   @impl true
@@ -63,7 +76,20 @@ defmodule DohyunDaemon.StateServer do
 
     case load_queue(queue_path) do
       {:ok, queue} ->
-        {:ok, %{queue_path: queue_path, queue: queue}}
+        idle_ms = parse_env_int("DOHYUN_DAEMON_IDLE_MS", @default_idle_ms)
+
+        if idle_ms > 0 do
+          Process.send_after(self(), :check_idle, @default_check_interval_ms)
+        end
+
+        state = %{
+          queue_path: queue_path,
+          queue: queue,
+          last_activity: monotonic_ms(),
+          idle_ms: idle_ms
+        }
+
+        {:ok, state}
 
       {:error, reason} ->
         {:stop, reason}
@@ -72,7 +98,15 @@ defmodule DohyunDaemon.StateServer do
 
   @impl true
   def handle_call(:get_queue, _from, state) do
-    {:reply, state.queue, state}
+    {:reply, state.queue, bump(state)}
+  end
+
+  def handle_call(:last_activity, _from, state) do
+    {:reply, state.last_activity, state}
+  end
+
+  def handle_call(:idle_elapsed_ms, _from, state) do
+    {:reply, monotonic_ms() - state.last_activity, state}
   end
 
   def handle_call({:enqueue, task}, _from, state) do
@@ -80,7 +114,7 @@ defmodule DohyunDaemon.StateServer do
       :ok ->
         new_queue = %{state.queue | "tasks" => state.queue["tasks"] ++ [task]}
         :ok = persist_atomic(state.queue_path, new_queue)
-        {:reply, {:ok, task}, %{state | queue: new_queue}}
+        {:reply, {:ok, task}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -101,7 +135,7 @@ defmodule DohyunDaemon.StateServer do
         new_tasks = List.replace_at(tasks, idx, updated)
         new_queue = %{state.queue | "tasks" => new_tasks}
         :ok = persist_atomic(state.queue_path, new_queue)
-        {:reply, {:ok, updated}, %{state | queue: new_queue}}
+        {:reply, {:ok, updated}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
     end
   end
 
@@ -147,7 +181,7 @@ defmodule DohyunDaemon.StateServer do
 
       new_queue = %{state.queue | "tasks" => new_tasks}
       :ok = persist_atomic(state.queue_path, new_queue)
-      {:reply, {:ok, count}, %{state | queue: new_queue}}
+      {:reply, {:ok, count}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
     end
   end
 
@@ -160,7 +194,22 @@ defmodule DohyunDaemon.StateServer do
     else
       new_queue = %{state.queue | "tasks" => Enum.reject(tasks, &(&1["status"] == "cancelled"))}
       :ok = persist_atomic(state.queue_path, new_queue)
-      {:reply, {:ok, removed}, %{state | queue: new_queue}}
+      {:reply, {:ok, removed}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
+    end
+  end
+
+  @impl true
+  def handle_info(:check_idle, state) do
+    elapsed = monotonic_ms() - state.last_activity
+
+    if state.idle_ms > 0 and elapsed >= state.idle_ms do
+      # System-level shutdown so the supervisor tree unwinds and the
+      # SocketServer terminate/2 callback runs (socket file cleanup).
+      :init.stop()
+      {:stop, :normal, state}
+    else
+      Process.send_after(self(), :check_idle, @default_check_interval_ms)
+      {:noreply, state}
     end
   end
 
@@ -169,7 +218,7 @@ defmodule DohyunDaemon.StateServer do
       {:ok, new_tasks} ->
         new_queue = %{state.queue | "tasks" => new_tasks}
         :ok = persist_atomic(state.queue_path, new_queue)
-        {:reply, :ok, %{state | queue: new_queue}}
+        {:reply, :ok, %{state | queue: new_queue, last_activity: monotonic_ms()}}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -181,6 +230,22 @@ defmodule DohyunDaemon.StateServer do
   defp queue_path(root), do: Path.join([root, ".dohyun", "runtime", "queue.json"])
 
   defp iso_now, do: DateTime.utc_now() |> DateTime.to_iso8601()
+
+  defp monotonic_ms, do: System.monotonic_time(:millisecond)
+
+  defp bump(state), do: %{state | last_activity: monotonic_ms()}
+
+  defp parse_env_int(key, default) do
+    case System.get_env(key) do
+      nil -> default
+      "" -> default
+      value ->
+        case Integer.parse(value) do
+          {n, _} when n >= 0 -> n
+          _ -> default
+        end
+    end
+  end
 
   # Look up a task by id, run fun.(task), persist, and reply {:ok, updated}.
   # Replies {:ok, nil} when the id is unknown.
@@ -196,7 +261,7 @@ defmodule DohyunDaemon.StateServer do
         new_tasks = List.replace_at(tasks, idx, updated)
         new_queue = %{state.queue | "tasks" => new_tasks}
         :ok = persist_atomic(state.queue_path, new_queue)
-        {:reply, {:ok, updated}, %{state | queue: new_queue}}
+        {:reply, {:ok, updated}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
     end
   end
 
