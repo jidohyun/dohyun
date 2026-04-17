@@ -76,6 +76,54 @@ defmodule DohyunDaemon.SocketServerTest do
     :gen_tcp.close(sock)
   end
 
+  test "enqueue cmd creates task with daemon-generated id/timestamps", %{sock_path: sock_path, harness_root: root} do
+    sock = connect(sock_path)
+
+    args = %{
+      "title" => "daemon-made",
+      "description" => nil,
+      "status" => "pending",
+      "priority" => "normal",
+      "type" => "feature",
+      "dod" => ["step-1"],
+      "metadata" => %{}
+    }
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => args}))
+    response = recv_line(sock)
+
+    assert response["ok"] == true
+    task = response["data"]["task"]
+    assert task["title"] == "daemon-made"
+    assert task["status"] == "pending"
+    assert task["dod"] == ["step-1"]
+    assert task["dodChecked"] == []
+    assert is_binary(task["id"]) and byte_size(task["id"]) > 0
+    assert is_binary(task["createdAt"])
+    assert is_binary(task["updatedAt"])
+
+    # persisted on disk
+    queue_path = Path.join(root, ".dohyun/runtime/queue.json")
+    assert File.exists?(queue_path)
+    on_disk = queue_path |> File.read!() |> Jason.decode!()
+    assert on_disk["version"] == 1
+    assert [%{"title" => "daemon-made"}] = on_disk["tasks"]
+
+    :gen_tcp.close(sock)
+  end
+
+  test "enqueue cmd rejects args missing title", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{"dod" => []}}))
+    response = recv_line(sock)
+
+    assert response["ok"] == false
+    assert response["error"] in ["invalid_args", "invalid_task"]
+
+    :gen_tcp.close(sock)
+  end
+
   test "10 concurrent clients all get responses", %{sock_path: sock_path} do
     parent = self()
     n = 10

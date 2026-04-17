@@ -103,7 +103,68 @@ defmodule DohyunDaemon.SocketServer do
     %{ok: true, data: %{queue: queue}}
   end
 
+  defp dispatch("enqueue", %{"args" => args}, state_server) when is_map(args) do
+    case build_task(args) do
+      {:ok, task} ->
+        case StateServer.enqueue(state_server, task) do
+          {:ok, saved} -> %{ok: true, data: %{task: saved}}
+          {:error, reason} -> %{ok: false, error: to_string(reason)}
+        end
+
+      {:error, reason} ->
+        %{ok: false, error: to_string(reason)}
+    end
+  end
+
+  defp dispatch("enqueue", _envelope, _state_server) do
+    %{ok: false, error: "invalid_args"}
+  end
+
   defp dispatch(_unknown, _envelope, _state_server) do
     %{ok: false, error: "unknown_cmd"}
+  end
+
+  # ── Task construction ────────────────────────────────────────
+
+  defp build_task(args) do
+    title = Map.get(args, "title")
+
+    if is_binary(title) and title != "" do
+      now = DateTime.utc_now() |> DateTime.to_iso8601()
+
+      task = %{
+        "id" => generate_id(),
+        "title" => title,
+        "description" => Map.get(args, "description"),
+        "status" => Map.get(args, "status", "pending"),
+        "priority" => Map.get(args, "priority", "normal"),
+        "type" => Map.get(args, "type", "feature"),
+        "dod" => Map.get(args, "dod", []),
+        "dodChecked" => [],
+        "startedAt" => nil,
+        "completedAt" => nil,
+        "metadata" => Map.get(args, "metadata", %{}),
+        "createdAt" => now,
+        "updatedAt" => now
+      }
+
+      {:ok, task}
+    else
+      {:error, :invalid_args}
+    end
+  end
+
+  defp generate_id do
+    # UUID v4 compatible — 16 random bytes encoded as hex in 8-4-4-4-12 form
+    <<a::32, b::16, c::16, d::16, e::48>> = :crypto.strong_rand_bytes(16)
+
+    :io_lib.format("~8.16.0b-~4.16.0b-4~3.16.0b-~4.16.0b-~12.16.0b", [
+      a,
+      b,
+      Bitwise.band(c, 0x0FFF),
+      Bitwise.bor(Bitwise.band(d, 0x3FFF), 0x8000),
+      e
+    ])
+    |> IO.iodata_to_binary()
   end
 end
