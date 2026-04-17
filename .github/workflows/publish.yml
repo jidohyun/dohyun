@@ -88,7 +88,7 @@ jobs:
             rm -rf "$dst"
             mv "$src" "$dst"
           done
-      - name: Publish each sub-package
+      - name: Publish each sub-package (skip if already on registry)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         # --provenance requires the package to already exist on the registry
@@ -97,6 +97,12 @@ jobs:
         # patches can add provenance back once the name is reserved.
         run: |
           for target in darwin-arm64 linux-x64 linux-arm64; do
+            version=$(node -p "require('./packages/daemon-$target/package.json').version")
+            name="@jidohyun/dohyun-daemon-$target"
+            if npm view "$name@$version" version > /dev/null 2>&1; then
+              echo "==> $name@$version already published — skipping"
+              continue
+            fi
             (cd "packages/daemon-$target" && npm publish --access public)
           done
 
@@ -114,10 +120,19 @@ jobs:
           node-version: 20.x
           registry-url: https://registry.npmjs.org
           cache: npm
-      - run: npm ci
+      # npm install (not npm ci) so the lock file can accept newly-bumped
+      # daemon sub-package versions. The sub-packages are optional at install
+      # time; the daemon E2E tests skip when there's no bundle on disk.
+      - run: npm install --no-audit --no-fund
       - run: npm run build
       - run: npm test
-      - name: Publish
+      - name: Publish (skip if already on registry)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --provenance --access public
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "@jidohyun/dohyun@$version" version > /dev/null 2>&1; then
+            echo "==> @jidohyun/dohyun@$version already published — skipping"
+            exit 0
+          fi
+          npm publish --provenance --access public
