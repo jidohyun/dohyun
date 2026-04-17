@@ -192,6 +192,38 @@ defmodule DohyunDaemon.SocketServerTest do
     :gen_tcp.close(sock)
   end
 
+  test "review_pending cmd flips task status to review-pending", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{
+      "title" => "rp-task", "status" => "pending", "priority" => "normal", "type" => "feature", "dod" => []
+    }}))
+    task_id = recv_line(sock)["data"]["task"]["id"]
+
+    send_line(sock, Jason.encode!(%{"cmd" => "review_pending", "args" => %{"taskId" => task_id}}))
+    response = recv_line(sock)
+    assert response["ok"] == true
+    assert response["data"]["task"]["status"] == "review-pending"
+
+    :gen_tcp.close(sock)
+  end
+
+  test "check_dod cmd appends item to dodChecked", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{
+      "title" => "dod-task", "status" => "pending", "priority" => "normal", "type" => "feature", "dod" => ["a", "b"]
+    }}))
+    task_id = recv_line(sock)["data"]["task"]["id"]
+
+    send_line(sock, Jason.encode!(%{"cmd" => "check_dod", "args" => %{"taskId" => task_id, "item" => "a"}}))
+    response = recv_line(sock)
+    assert response["ok"] == true
+    assert response["data"]["task"]["dodChecked"] == ["a"]
+
+    :gen_tcp.close(sock)
+  end
+
   test "10 concurrent clients all get responses", %{sock_path: sock_path} do
     parent = self()
     n = 10

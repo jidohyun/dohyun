@@ -35,6 +35,14 @@ defmodule DohyunDaemon.StateServer do
     GenServer.call(server, {:complete_task, task_id})
   end
 
+  def transition_to_review_pending(server \\ __MODULE__, task_id) do
+    GenServer.call(server, {:review_pending, task_id})
+  end
+
+  def check_dod(server \\ __MODULE__, task_id, item) do
+    GenServer.call(server, {:check_dod, task_id, item})
+  end
+
   # ── Callbacks ────────────────────────────────────────────────
 
   @impl true
@@ -88,6 +96,25 @@ defmodule DohyunDaemon.StateServer do
   def handle_call({:complete_task, task_id}, _from, state) do
     now = iso_now()
     update_by_id(state, task_id, &Map.merge(&1, %{"status" => "completed", "completedAt" => now, "updatedAt" => now}))
+  end
+
+  def handle_call({:review_pending, task_id}, _from, state) do
+    now = iso_now()
+    update_by_id(state, task_id, &Map.merge(&1, %{"status" => "review-pending", "updatedAt" => now}))
+  end
+
+  def handle_call({:check_dod, task_id, item}, _from, state) do
+    now = iso_now()
+
+    update_by_id(state, task_id, fn task ->
+      checked = task["dodChecked"] || []
+
+      if item in checked do
+        task
+      else
+        Map.merge(task, %{"dodChecked" => checked ++ [item], "updatedAt" => now})
+      end
+    end)
   end
 
   # ── Internal ─────────────────────────────────────────────────

@@ -128,22 +128,35 @@ defmodule DohyunDaemon.SocketServer do
     end
   end
 
-  defp dispatch("complete", %{"args" => %{"taskId" => task_id}}, state_server)
-       when is_binary(task_id) do
-    case StateServer.complete_task(state_server, task_id) do
-      {:ok, nil} -> %{ok: true, data: %{task: nil}}
-      {:ok, task} -> %{ok: true, data: %{task: task}}
-      {:error, reason} -> %{ok: false, error: to_string(reason)}
-    end
+  defp dispatch("complete", envelope, state_server),
+    do: dispatch_task_mutation(envelope, &StateServer.complete_task(state_server, &1))
+
+  defp dispatch("review_pending", envelope, state_server),
+    do: dispatch_task_mutation(envelope, &StateServer.transition_to_review_pending(state_server, &1))
+
+  defp dispatch("check_dod", %{"args" => %{"taskId" => task_id, "item" => item}}, state_server)
+       when is_binary(task_id) and is_binary(item) do
+    format_task_reply(StateServer.check_dod(state_server, task_id, item))
   end
 
-  defp dispatch("complete", _envelope, _state_server) do
+  defp dispatch("check_dod", _envelope, _state_server) do
     %{ok: false, error: "invalid_args"}
   end
 
   defp dispatch(_unknown, _envelope, _state_server) do
     %{ok: false, error: "unknown_cmd"}
   end
+
+  # Common pattern for "mutate task by id" dispatches.
+  defp dispatch_task_mutation(%{"args" => %{"taskId" => task_id}}, op) when is_binary(task_id),
+    do: format_task_reply(op.(task_id))
+
+  defp dispatch_task_mutation(_envelope, _op),
+    do: %{ok: false, error: "invalid_args"}
+
+  defp format_task_reply({:ok, nil}), do: %{ok: true, data: %{task: nil}}
+  defp format_task_reply({:ok, task}), do: %{ok: true, data: %{task: task}}
+  defp format_task_reply({:error, reason}), do: %{ok: false, error: to_string(reason)}
 
   # ── Task construction ────────────────────────────────────────
 

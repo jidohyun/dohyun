@@ -160,6 +160,16 @@ export async function completeTask(taskId: string, cwd?: string): Promise<Task |
 }
 
 export async function transitionToReviewPending(taskId: string, cwd?: string): Promise<Task | null> {
+  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+    cmd: 'review_pending',
+    args: { taskId },
+  })
+  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
+    const t = (delegated as { task: unknown }).task
+    if (t === null) return null
+    if (isTask(t)) return t
+  }
+
   const queue = await loadQueue(cwd)
   const task = queue.tasks.find(t => t.id === taskId)
   if (!task) return null
@@ -216,6 +226,16 @@ export async function checkDodItem(
   dodItem: string,
   cwd?: string
 ): Promise<Task | null> {
+  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+    cmd: 'check_dod',
+    args: { taskId, item: dodItem },
+  })
+  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
+    const t = (delegated as { task: unknown }).task
+    if (t === null) return null
+    if (isTask(t)) return t
+  }
+
   const queue = await loadQueue(cwd)
   const task = queue.tasks.find(t => t.id === taskId)
   if (!task) return null

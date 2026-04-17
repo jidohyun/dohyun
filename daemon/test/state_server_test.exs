@@ -176,6 +176,53 @@ defmodule DohyunDaemon.StateServerTest do
     end
   end
 
+  describe "transition_to_review_pending" do
+    test "sets status=review-pending on the matching task", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, original} = StateServer.enqueue(pid, sample_task(%{"id" => "rp", "title" => "t"}))
+
+      assert {:ok, updated} = StateServer.transition_to_review_pending(pid, original["id"])
+      assert updated["status"] == "review-pending"
+
+      GenServer.stop(pid)
+    end
+
+    test "returns {:ok, nil} for unknown id", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      assert {:ok, nil} = StateServer.transition_to_review_pending(pid, "ghost")
+      GenServer.stop(pid)
+    end
+  end
+
+  describe "check_dod" do
+    test "appends DoD item to dodChecked", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, original} = StateServer.enqueue(pid, sample_task(%{"id" => "d1", "dod" => ["one", "two"]}))
+
+      assert {:ok, updated} = StateServer.check_dod(pid, original["id"], "one")
+      assert updated["dodChecked"] == ["one"]
+
+      GenServer.stop(pid)
+    end
+
+    test "idempotent — checking the same item twice does not duplicate", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, original} = StateServer.enqueue(pid, sample_task(%{"id" => "d2", "dod" => ["one"]}))
+
+      {:ok, _} = StateServer.check_dod(pid, original["id"], "one")
+      assert {:ok, updated} = StateServer.check_dod(pid, original["id"], "one")
+      assert updated["dodChecked"] == ["one"]
+
+      GenServer.stop(pid)
+    end
+
+    test "returns {:ok, nil} for unknown id", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      assert {:ok, nil} = StateServer.check_dod(pid, "ghost", "x")
+      GenServer.stop(pid)
+    end
+  end
+
   describe "schema version" do
     test "preserves version field on enqueue (round-trip v1)", %{harness_root: root, queue_path: qpath} do
       write_queue(qpath, %{"version" => 1, "tasks" => []})
