@@ -67,14 +67,15 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Sync sub-package versions with the git tag
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          export VERSION="${GITHUB_REF_NAME#v}"
+          echo "Setting main package.json + sub-packages to $VERSION"
           node -e "
             const fs = require('node:fs');
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
             pkg.version = process.env.VERSION;
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
-          VERSION="$VERSION" node scripts/sync-daemon-versions.mjs
+          node scripts/sync-daemon-versions.mjs
       - uses: actions/download-artifact@v4
         with:
           pattern: daemon-*
