@@ -1,6 +1,6 @@
 {
   "name": "@jidohyun/dohyun-daemon-linux-arm64",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Pre-built dohyun daemon release for Linux arm64 (glibc)",
   "license": "MIT",
   "repository": {

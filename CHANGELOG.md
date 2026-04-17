@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-04-17
+
+### Added — Zero-config daemon lifecycle
+
+Users no longer need to run `dohyun daemon start` manually. The first
+write-path CLI call (`enqueueTask`, `dequeueTask`, `completeTask`, etc.)
+fire-and-forget-spawns the daemon in the background and completes via
+direct file writes in the current call, so there is no perceived latency.
+The next CLI call gets a warm socket.
+
+- **Auto-spawn on write** (`scripts/daemon.ts#autoSpawnBackground`) —
+  suppressed by `DOHYUN_NO_DAEMON=1`, noop when the daemon is already
+  running, noop when no pre-built bundle or mix repo is reachable.
+- **Idle shutdown** (Elixir `StateServer`) — daemon tracks
+  `last_activity` on every `handle_call` and `:init.stop()`s after 10
+  minutes of idleness. Tunable via `DOHYUN_DAEMON_IDLE_MS`; set to `0`
+  to disable.
+- **Explicit `dohyun daemon start/stop/status` still work** — refactored
+  to share the background-spawn helper. `start` polls the socket until
+  it binds (or times out at 8 s); auto-spawn returns immediately.
+- **Three new tests** (`tests/runtime/queue-autospawn.test.mjs`) plus
+  three new Elixir cases (`daemon/test/idle_test.exs`) covering the
+  `last_activity`, `idle_elapsed_ms`, and opt-out behaviors.
+
+### Docs
+
+- README daemon section rewritten around the auto-spawn flow.
+- `docs/daemon-architecture.md` gains explicit "Auto-spawn" and
+  "Idle shutdown" sections.
+
 ## [0.13.0] - 2026-04-17
 
 ### Added — Zero-dependency daemon via pre-built releases
