@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Every queue write is now daemon-aware
+
+All `queue.ts` mutations (`enqueue`, `dequeue`, `complete`, `review_pending`,
+`check_dod`, `cancel_all`, `prune_cancelled`, `reorder`) try the Elixir sidecar
+first and fall back to direct file writes when it's absent. With the daemon
+running, concurrent CLI invocations are fully serialized through a single
+GenServer mailbox — no more lost writes from two terminals racing on
+`queue.json`. Proven by a 20-way parallel-enqueue E2E against the live daemon.
+
+Wire contract v1 grew seven new cmds; no breaking changes to existing shapes.
+
 ### Planned
 
 - Multi-project harness sharing
