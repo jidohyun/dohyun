@@ -6,7 +6,95 @@ on:
       - 'v*'
 
 jobs:
-  publish:
+  build-daemon:
+    name: Build daemon release (${{ matrix.target }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: darwin-arm64
+            runs-on: macos-14
+          - target: darwin-x64
+            runs-on: macos-13
+          - target: linux-x64
+            # 20.04 for the older glibc baseline — binaries produced here
+            # run on anything glibc 2.31+.
+            runs-on: ubuntu-22.04
+          - target: linux-arm64
+            runs-on: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.17'
+          otp-version: '27'
+      - name: Sync sub-package versions with the git tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e "
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const pkgPath = 'package.json';
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            pkg.version = process.env.VERSION;
+            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+          "
+          VERSION="$VERSION" node scripts/sync-daemon-versions.mjs
+      - name: Build release
+        run: scripts/build-daemon-release.sh ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daemon-${{ matrix.target }}
+          path: packages/daemon-${{ matrix.target }}/release
+          retention-days: 3
+
+  publish-daemon:
+    name: Publish daemon sub-packages
+    needs: build-daemon
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: https://registry.npmjs.org
+      - name: Sync sub-package versions with the git tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          node -e "
+            const fs = require('node:fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = process.env.VERSION;
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+          VERSION="$VERSION" node scripts/sync-daemon-versions.mjs
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: daemon-*
+          path: release-artifacts
+      - name: Place artifacts into each sub-package
+        run: |
+          for target in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
+            src="release-artifacts/daemon-$target"
+            dst="packages/daemon-$target/release"
+            rm -rf "$dst"
+            mv "$src" "$dst"
+          done
+      - name: Publish each sub-package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for target in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
+            (cd "packages/daemon-$target" && npm publish --access public --provenance)
+          done
+
+  publish-main:
+    name: Publish main package
+    needs: publish-daemon
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -21,6 +109,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
-      - run: npm publish --provenance --access public
+      - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
