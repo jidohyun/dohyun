@@ -1,0 +1,3 @@
+# Pre-built release trees are produced by CI (or scripts/build-daemon-release.sh)
+# and published to npm — they do not live in git.
+daemon-*/release/

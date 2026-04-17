@@ -31,3 +31,5 @@ daemon/deps/
 daemon/cover/
 daemon/*.ez
 daemon/erl_crash.dump
+.dohyun/daemon.pid
+.dohyun/daemon.sock
