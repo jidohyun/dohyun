@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, openSync, mkdirSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, openSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { paths } from '../src/state/paths.js'
@@ -10,6 +10,24 @@ export interface DaemonStatusReport {
   status: DaemonStatus
   pid: number | null
   socketPath: string
+}
+
+export type DaemonResolution =
+  | { kind: 'release'; binary: string }
+  | { kind: 'mix'; repo: string }
+
+export interface LocateOptions {
+  searchFrom?: string
+  platform?: NodeJS.Platform
+  arch?: string
+  /**
+   * Forced mix repo path. Pass `null` to skip the mix lookup altogether
+   * (useful in tests). Pass a string to force that specific directory.
+   * Omit to use DOHYUN_DAEMON_REPO env + bundled daemon/ dir discovery.
+   */
+  daemonRepoOverride?: string | null
+  /** Skip env + auto-discovery even when override is not provided. */
+  disableAutoDiscovery?: boolean
 }
 
 const START_SOCKET_TIMEOUT_MS = 8000
@@ -43,12 +61,53 @@ export function inspectDaemon(cwd?: string): DaemonStatusReport {
   return { status: 'stopped', pid: null, socketPath }
 }
 
-function locateDaemonRepo(): string | null {
-  const env = process.env.DOHYUN_DAEMON_REPO
-  if (env && existsSync(resolve(env, 'mix.exs'))) return resolve(env)
-  if (env && existsSync(resolve(env, 'daemon', 'mix.exs'))) return resolve(env, 'daemon')
+function platformBundleName(platform: NodeJS.Platform, arch: string): string | null {
+  const os =
+    platform === 'darwin' ? 'darwin' :
+    platform === 'linux' ? 'linux' :
+    null
+  const cpu =
+    arch === 'arm64' ? 'arm64' :
+    arch === 'x64' ? 'x64' :
+    null
+  if (os === null || cpu === null) return null
+  return `@jidohyun/dohyun-daemon-${os}-${cpu}`
+}
 
-  // dist/src/cli/daemon.js → repo root is four parents up
+function findPrebuiltBinary(searchFrom: string, platform: NodeJS.Platform, arch: string): string | null {
+  const bundle = platformBundleName(platform, arch)
+  if (bundle === null) return null
+
+  // Walk node_modules directly (vendoring convention) rather than relying on
+  // require.resolve, which doesn't work from compiled ESM without paths.
+  let dir = searchFrom
+  while (true) {
+    const candidate = resolve(dir, 'node_modules', bundle, 'release', 'bin', 'dohyun_daemon')
+    if (existsSync(candidate)) {
+      const st = statSync(candidate)
+      if (st.isFile()) return candidate
+    }
+    const parent = dirname(dir)
+    if (parent === dir) return null
+    dir = parent
+  }
+}
+
+function findMixRepo(override: string | null | undefined, disableAutoDiscovery = false): string | null {
+  // Explicit override wins — empty string/null is treated as "do not look".
+  if (override !== undefined) {
+    if (!override) return null
+    if (existsSync(resolve(override, 'mix.exs'))) return resolve(override)
+    if (existsSync(resolve(override, 'daemon', 'mix.exs'))) return resolve(override, 'daemon')
+    return null
+  }
+  if (disableAutoDiscovery) return null
+
+  const env = process.env.DOHYUN_DAEMON_REPO
+  if (env) {
+    if (existsSync(resolve(env, 'mix.exs'))) return resolve(env)
+    if (existsSync(resolve(env, 'daemon', 'mix.exs'))) return resolve(env, 'daemon')
+  }
   const here = dirname(fileURLToPath(import.meta.url))
   const candidates = [
     resolve(here, '..', '..', '..', 'daemon'),
@@ -57,6 +116,20 @@ function locateDaemonRepo(): string | null {
   for (const path of candidates) {
     if (existsSync(resolve(path, 'mix.exs'))) return path
   }
+  return null
+}
+
+export function locateDaemonExecution(opts: LocateOptions = {}): DaemonResolution | null {
+  const searchFrom = opts.searchFrom ?? process.cwd()
+  const platform = opts.platform ?? process.platform
+  const arch = opts.arch ?? process.arch
+
+  const binary = findPrebuiltBinary(searchFrom, platform, arch)
+  if (binary) return { kind: 'release', binary }
+
+  const repo = findMixRepo(opts.daemonRepoOverride, opts.disableAutoDiscovery ?? false)
+  if (repo) return { kind: 'mix', repo }
+
   return null
 }
 
@@ -81,20 +154,24 @@ async function startDaemon(cwd: string): Promise<void> {
     return
   }
 
-  if (!mixOnPath()) {
-    console.error('elixir/mix not found on PATH. Install Elixir >=1.16 to run the daemon.')
+  const execution = locateDaemonExecution({ searchFrom: cwd })
+  if (execution === null) {
+    console.error(
+      'No daemon runtime found:\n' +
+      `  • no pre-built release at node_modules/@jidohyun/dohyun-daemon-<platform>\n` +
+      `  • no Elixir mix repo (set DOHYUN_DAEMON_REPO or install mix)\n` +
+      'Install @jidohyun/dohyun on a supported platform (darwin-arm64/x64, linux-arm64/x64) to get the bundled release.'
+    )
     process.exitCode = 1
     return
   }
 
-  const repo = locateDaemonRepo()
-  if (!repo) {
-    console.error('daemon/ source not found. Clone https://github.com/jidohyun/dohyun to enable it, or set DOHYUN_DAEMON_REPO.')
+  if (execution.kind === 'mix' && !mixOnPath()) {
+    console.error('Elixir mix not found on PATH and no pre-built release for this platform.')
     process.exitCode = 1
     return
   }
 
-  // stale cleanup — daemon won't start if leftover socket file is sitting around
   if (report.status === 'stale') {
     try { rmSync(report.socketPath, { force: true }) } catch {}
   }
@@ -105,8 +182,15 @@ async function startDaemon(cwd: string): Promise<void> {
   const outFd = openSync(logPath, 'a')
   const errFd = openSync(logPath, 'a')
 
-  const child = spawn('mix', ['run', '--no-halt'], {
-    cwd: repo,
+  // Release bundle: `bin/dohyun_daemon start` boots the OTP app in the
+  // foreground. We pair it with detached: true + unref() so BEAM lives past
+  // the parent shell — same pattern as the mix path.
+  const [command, args, spawnCwd] = execution.kind === 'release'
+    ? [execution.binary, ['start'], cwd]
+    : ['mix', ['run', '--no-halt'], execution.repo]
+
+  const child = spawn(command, args, {
+    cwd: spawnCwd,
     env: { ...process.env, DOHYUN_HARNESS_ROOT: cwd, MIX_ENV: 'dev' },
     detached: true,
     stdio: ['ignore', outFd, errFd],
@@ -121,7 +205,8 @@ async function startDaemon(cwd: string): Promise<void> {
   }
 
   const after = inspectDaemon(cwd)
-  console.log(`Daemon started (pid=${after.pid}, socket=${after.socketPath})`)
+  const mode = execution.kind === 'release' ? 'release' : 'mix'
+  console.log(`Daemon started (${mode}, pid=${after.pid}, socket=${after.socketPath})`)
 }
 
 async function stopDaemon(cwd: string): Promise<void> {
@@ -133,8 +218,6 @@ async function stopDaemon(cwd: string): Promise<void> {
 
   if (report.pid !== null && isAlive(report.pid)) {
     try { process.kill(report.pid, 'SIGTERM') } catch {}
-    // BEAM exits ungracefully on SIGTERM so socket/pid files may linger; we
-    // only need the process itself to be gone before we clean up.
     const gone = await pollUntil(() => !isAlive(report.pid!), STOP_TIMEOUT_MS)
     if (!gone) {
       try { process.kill(report.pid, 'SIGKILL') } catch {}
@@ -144,7 +227,6 @@ async function stopDaemon(cwd: string): Promise<void> {
     }
   }
 
-  // Stale pid file / socket cleanup
   try { rmSync(paths.daemonSock(cwd), { force: true }) } catch {}
   try { rmSync(paths.daemonPid(cwd), { force: true }) } catch {}
   console.log('Daemon stopped.')
