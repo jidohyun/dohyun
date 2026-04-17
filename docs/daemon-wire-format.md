@@ -21,7 +21,7 @@ Examples:
 
 ```json
 {"cmd":"status"}
-{"cmd":"enqueue","args":{"task":{...}},"id":"cli-42"}
+{"cmd":"enqueue","args":{"title":"ship it","dod":["all green"]},"id":"cli-42"}
 ```
 
 ## Envelope — Response
@@ -48,11 +48,17 @@ Error:
 
 ## Error codes
 
-| code           | meaning                                                           |
-|----------------|-------------------------------------------------------------------|
-| `parse`        | request line was not valid JSON or missing required `cmd` field   |
-| `unknown_cmd`  | `cmd` is not implemented by this daemon version                   |
-| `invalid_task` | payload failed task-shape validation (e.g. enqueue with bad task) |
+| code                 | meaning                                                                     |
+|----------------------|-----------------------------------------------------------------------------|
+| `parse`              | request line was not valid JSON or missing required `cmd` field             |
+| `unknown_cmd`        | `cmd` is not implemented by this daemon version                             |
+| `invalid_args`       | required args (e.g. `taskId`, `item`) are missing or wrong type             |
+| `invalid_task`       | task payload failed shape validation (e.g. enqueue with empty title)        |
+| `task_not_found`     | `reorder` referenced a task id that does not exist                          |
+| `task_not_pending`   | `reorder` targeted a task that is not in `pending` status                   |
+| `target_not_found`   | `reorder` with `mode:"before"` referenced an unknown anchor id              |
+| `target_not_pending` | `reorder` with `mode:"before"` referenced an anchor that is not pending     |
+| `invalid_target`     | `reorder` target shape was neither `{mode:"first"}` nor `{mode:"before",id}` |
 
 Unknown errors from the daemon itself bubble up as `error: "internal"` — the
 client should retry through the file-based fallback when it sees this.
@@ -78,11 +84,92 @@ Response `data`:
 
 Additional fields (e.g. `session`, `activeTask`) will be added in later releases.
 
-### `enqueue` *(introduced with T6)*
+### `enqueue`
 
-Request: `{"cmd":"enqueue","args":{"task":{...}}}`  
-Response `data`: `{"task": {...}}` — the task as stored (server may normalize).  
-Errors: `invalid_task`.
+Appends a new task to the queue. The daemon generates `id`, `createdAt`, and
+`updatedAt`; the client supplies the business fields.
+
+Request `args`:
+
+```
+{
+  "title":       "<string, required, non-empty>",
+  "description": <string | null, optional>,
+  "status":      "<string, optional, default 'pending'>",
+  "priority":    "<string, optional, default 'normal'>",
+  "type":        "<string, optional, default 'feature'>",
+  "dod":         [ "<string>", ... ],   // optional, default []
+  "metadata":    { ... }                // optional, default {}
+}
+```
+
+Response `data`: `{"task": <Task>}`  
+Errors: `invalid_args` (no title).
+
+### `dequeue`
+
+Flips the first `pending` task to `in_progress` and stamps `startedAt`.
+
+Request: `{"cmd":"dequeue"}`  
+Response `data`: `{"task": <Task> | null}` — `null` when nothing is pending.
+
+### `complete`
+
+Marks a task completed, stamping `completedAt`.
+
+Request `args`: `{"taskId": "<string>"}`  
+Response `data`: `{"task": <Task> | null}` — `null` for unknown id.  
+Errors: `invalid_args`.
+
+### `review_pending`
+
+Transitions a task into `review-pending`.
+
+Request `args`: `{"taskId": "<string>"}`  
+Response `data`: `{"task": <Task> | null}`.  
+Errors: `invalid_args`.
+
+### `check_dod`
+
+Appends a DoD line to the task's `dodChecked` list. Idempotent — duplicates
+are not added.
+
+Request `args`: `{"taskId": "<string>", "item": "<string>"}`  
+Response `data`: `{"task": <Task> | null}`.  
+Errors: `invalid_args`.
+
+### `cancel_all`
+
+Marks every `pending` or `in_progress` task as `cancelled`.
+
+Request: `{"cmd":"cancel_all"}`  
+Response `data`: `{"count": <integer>}` — number of tasks flipped.
+
+### `prune_cancelled`
+
+Removes every `cancelled` task from the queue.
+
+Request: `{"cmd":"prune_cancelled"}`  
+Response `data`: `{"count": <integer>}` — number of tasks removed.
+
+### `reorder`
+
+Moves a `pending` task within the pending segment. Non-pending tasks are
+untouched.
+
+Request `args`:
+
+```
+{
+  "taskId": "<string>",
+  "target": { "mode": "first" }
+            | { "mode": "before", "id": "<anchor task id>" }
+}
+```
+
+Response `data`: `{}` on success.  
+Errors: `invalid_args`, `task_not_found`, `task_not_pending`,
+`target_not_found`, `target_not_pending`, `invalid_target`.
 
 ## Connection lifecycle
 
