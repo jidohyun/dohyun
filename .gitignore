@@ -24,3 +24,10 @@ dist/
 # Keep memory and plans in git
 # .dohyun/memory/
 # .dohyun/plans/
+
+# Elixir daemon build artifacts (opt-in subproject)
+daemon/_build/
+daemon/deps/
+daemon/cover/
+daemon/*.ez
+daemon/erl_crash.dump
