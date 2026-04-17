@@ -7,7 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned (next)
+## [0.13.0] - 2026-04-17
+
+### Added — Zero-dependency daemon via pre-built releases
+
+`dohyun daemon start` no longer requires Elixir/mix to be installed on the
+host. On supported platforms npm pulls a matching pre-built release bundle
+through optional dependencies; the Node CLI locates and spawns it directly.
+
+- **Pre-built OTP releases** for darwin-arm64, darwin-x64, linux-x64,
+  linux-arm64. Each bundle ships ERTS + compiled BEAM files (~16 MB on
+  disk, glibc 2.31+ on Linux). Published as separate npm packages with
+  `os`/`cpu` constraints:
+  - `@jidohyun/dohyun-daemon-darwin-arm64`
+  - `@jidohyun/dohyun-daemon-darwin-x64`
+  - `@jidohyun/dohyun-daemon-linux-x64`
+  - `@jidohyun/dohyun-daemon-linux-arm64`
+- **`scripts/daemon.ts#locateDaemonExecution`** — finds the matching bundle
+  in `node_modules/@jidohyun/dohyun-daemon-<os>-<cpu>/release/bin/` and
+  runs `bin/dohyun_daemon start` detached. Falls back to
+  `mix run --no-halt` against `daemon/` when a bundle is not present (dev
+  workflow untouched).
+- **Release build script** (`scripts/build-daemon-release.sh`) and
+  **GitHub Actions matrix workflow** — tag push triggers four parallel
+  `mix release` jobs on native runners, uploads artifacts into each
+  sub-package, publishes all four, then publishes the main package with
+  optionalDependencies resolving cleanly.
+- **`scripts/sync-daemon-versions.mjs`** keeps each sub-package and the
+  main `optionalDependencies` block locked to the main version on every
+  bump.
+
+### Distribution
+
+- The `daemon/` Elixir source is still **not** shipped in the npm tarball.
+- Each pre-built sub-package is roughly ~16 MB on disk. npm only installs
+  the one matching the host, so total install weight scales with users'
+  actual platform, not the product of all four.
+
+### Known limits
+
+- **Windows not yet supported.** The daemon uses Unix domain sockets and
+  hasn't been ported to named pipes. Tracked in a future plan.
+- **glibc only.** Alpine/musl hosts fall through to the mix path — install
+  Elixir manually to get the daemon there.
 
 ## [0.12.0] - 2026-04-17
 

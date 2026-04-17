@@ -155,9 +155,17 @@ dohyun daemon start    # spawns the Elixir sidecar in the background
 dohyun daemon status   # running | stopped | stale  (add --json for machines)
 ```
 
-First-time setup needs `mix deps.get` inside the `daemon/` directory so Jason
-is fetched. `dohyun daemon start` then locates the repo automatically (override
-with `DOHYUN_DAEMON_REPO=<path>` if you moved it).
+On supported platforms (macOS arm64/x64, Linux x64/arm64 glibc) npm installs
+a pre-built release bundle automatically via optional dependencies — **no
+Elixir or mix installation required**. `dohyun daemon start` runs the bundled
+`bin/dohyun_daemon start` detached so the vm survives after your shell exits.
+
+For other platforms, or for development against the daemon source, install
+Elixir 1.16+ and either:
+
+- clone the repo (`dohyun daemon start` finds the `daemon/` directory
+  automatically), or
+- set `DOHYUN_DAEMON_REPO=<path>` to point at a custom checkout.
 
 The daemon binds `.dohyun/daemon.sock`. The TS CLI auto-detects the socket
 and delegates state mutations through it; if the socket is absent it silently
