@@ -138,6 +138,63 @@ function mixOnPath(): boolean {
   return r.status === 0
 }
 
+export type AutoSpawnResult = 'disabled' | 'already-running' | 'spawned' | 'unavailable'
+
+/**
+ * Fire-and-forget daemon spawn. Never waits for the socket to bind — the
+ * calling CLI continues with its direct-file-write fallback immediately.
+ * The next CLI invocation gets a warm daemon for free.
+ *
+ * Returns a hint string so callers can log telemetry; absence of a hint
+ * is intentional (we don't want every write CLI spamming stderr).
+ */
+export function autoSpawnBackground(
+  cwd: string,
+  locateOpts: LocateOptions = {}
+): AutoSpawnResult {
+  if (process.env.DOHYUN_NO_DAEMON === '1') return 'disabled'
+
+  const report = inspectDaemon(cwd)
+  if (report.status === 'running') return 'already-running'
+
+  const execution = locateDaemonExecution({ searchFrom: cwd, ...locateOpts })
+  if (execution === null) return 'unavailable'
+  if (execution.kind === 'mix' && !mixOnPath()) return 'unavailable'
+
+  if (report.status === 'stale') {
+    try { rmSync(report.socketPath, { force: true }) } catch {}
+  }
+
+  const logDir = resolve(cwd, '.dohyun', 'logs')
+  try { mkdirSync(logDir, { recursive: true }) } catch {}
+  const logPath = resolve(logDir, 'daemon.log')
+  let outFd: number, errFd: number
+  try {
+    outFd = openSync(logPath, 'a')
+    errFd = openSync(logPath, 'a')
+  } catch {
+    return 'unavailable'
+  }
+
+  const [command, args, spawnCwd] = execution.kind === 'release'
+    ? [execution.binary, ['start'], cwd]
+    : ['mix', ['run', '--no-halt'], execution.repo]
+
+  try {
+    const child = spawn(command, args, {
+      cwd: spawnCwd,
+      env: { ...process.env, DOHYUN_HARNESS_ROOT: cwd, MIX_ENV: 'dev' },
+      detached: true,
+      stdio: ['ignore', outFd, errFd],
+    })
+    child.unref()
+  } catch {
+    return 'unavailable'
+  }
+
+  return 'spawned'
+}
+
 async function pollUntil(predicate: () => boolean, timeoutMs: number, intervalMs = 100): Promise<boolean> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -154,59 +211,46 @@ async function startDaemon(cwd: string): Promise<void> {
     return
   }
 
-  const execution = locateDaemonExecution({ searchFrom: cwd })
-  if (execution === null) {
+  // Explicit start bypasses DOHYUN_NO_DAEMON — the user asked for it on purpose.
+  const savedEnv = process.env.DOHYUN_NO_DAEMON
+  if (savedEnv !== undefined) delete process.env.DOHYUN_NO_DAEMON
+
+  let outcome: AutoSpawnResult
+  try {
+    outcome = autoSpawnBackground(cwd)
+  } finally {
+    if (savedEnv !== undefined) process.env.DOHYUN_NO_DAEMON = savedEnv
+  }
+
+  if (outcome === 'unavailable') {
     console.error(
       'No daemon runtime found:\n' +
       `  • no pre-built release at node_modules/@jidohyun/dohyun-daemon-<platform>\n` +
       `  • no Elixir mix repo (set DOHYUN_DAEMON_REPO or install mix)\n` +
-      'Install @jidohyun/dohyun on a supported platform (darwin-arm64/x64, linux-arm64/x64) to get the bundled release.'
+      'Install @jidohyun/dohyun on a supported platform (darwin-arm64, linux-arm64/x64) to get the bundled release.'
     )
     process.exitCode = 1
     return
   }
 
-  if (execution.kind === 'mix' && !mixOnPath()) {
-    console.error('Elixir mix not found on PATH and no pre-built release for this platform.')
-    process.exitCode = 1
+  if (outcome === 'already-running') {
+    // inspectDaemon disagreed above; treat as success
+    const after = inspectDaemon(cwd)
+    console.log(`Daemon already running (pid=${after.pid})`)
     return
   }
 
-  if (report.status === 'stale') {
-    try { rmSync(report.socketPath, { force: true }) } catch {}
-  }
-
-  const logDir = resolve(cwd, '.dohyun', 'logs')
-  mkdirSync(logDir, { recursive: true })
-  const logPath = resolve(logDir, 'daemon.log')
-  const outFd = openSync(logPath, 'a')
-  const errFd = openSync(logPath, 'a')
-
-  // Release bundle: `bin/dohyun_daemon start` boots the OTP app in the
-  // foreground. We pair it with detached: true + unref() so BEAM lives past
-  // the parent shell — same pattern as the mix path.
-  const [command, args, spawnCwd] = execution.kind === 'release'
-    ? [execution.binary, ['start'], cwd]
-    : ['mix', ['run', '--no-halt'], execution.repo]
-
-  const child = spawn(command, args, {
-    cwd: spawnCwd,
-    env: { ...process.env, DOHYUN_HARNESS_ROOT: cwd, MIX_ENV: 'dev' },
-    detached: true,
-    stdio: ['ignore', outFd, errFd],
-  })
-  child.unref()
-
+  // Spawned — poll the socket to confirm boot
   const up = await pollUntil(() => existsSync(paths.daemonSock(cwd)), START_SOCKET_TIMEOUT_MS)
   if (!up) {
+    const logPath = resolve(cwd, '.dohyun', 'logs', 'daemon.log')
     console.error(`Daemon did not bind ${paths.daemonSock(cwd)} within ${START_SOCKET_TIMEOUT_MS}ms. See ${logPath} for details.`)
     process.exitCode = 1
     return
   }
 
   const after = inspectDaemon(cwd)
-  const mode = execution.kind === 'release' ? 'release' : 'mix'
-  console.log(`Daemon started (${mode}, pid=${after.pid}, socket=${after.socketPath})`)
+  console.log(`Daemon started (pid=${after.pid}, socket=${after.socketPath})`)
 }
 
 async function stopDaemon(cwd: string): Promise<void> {

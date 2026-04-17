@@ -64,7 +64,8 @@ describe('pre-built daemon bundle', { skip: !bundleReady }, () => {
     try {
       const start = runCli(['daemon', 'start'], dir)
       assert.equal(start.exitCode, 0, `start should succeed: ${start.stderr}`)
-      assert.match(start.stdout, /release/i, 'should mention release mode')
+      // Successful start message is enough; mode label was removed when we
+      // unified explicit start with the background auto-spawn helper.
 
       await sleep(200)
 

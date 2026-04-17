@@ -3,11 +3,39 @@ import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now, uuid } from '../utils/time.js'
 import { DaemonClient } from './daemon-client.js'
+import type { DaemonEnvelope } from './daemon-wire.js'
 
 function isTask(value: unknown): value is Task {
   if (!value || typeof value !== 'object') return false
   const v = value as Record<string, unknown>
   return typeof v.id === 'string' && typeof v.title === 'string' && Array.isArray(v.dod)
+}
+
+/**
+ * Try to delegate a write to the daemon. On miss, fire-and-forget spawn a
+ * background daemon so the NEXT CLI call gets a warm socket — the current
+ * call still falls through to direct file I/O so the user sees no latency.
+ *
+ * Auto-spawn is suppressed in two cases we care about:
+ *   - DOHYUN_NO_DAEMON=1 is set (CI opt-out)
+ *   - the daemon returned ok:false to this call (a version mismatch or
+ *     genuine error — spawning a new copy would not help)
+ */
+async function delegateOrSpawn(envelope: DaemonEnvelope, cwd?: string): Promise<unknown | null> {
+  const client = new DaemonClient(paths.daemonSock(cwd))
+  const result = await client.tryDelegate(envelope)
+  if (!client.usedFallback) return result
+
+  // Only try to spawn when the miss looked like "no daemon here yet".
+  // We can't distinguish perfectly; safest heuristic is to call the helper
+  // which itself checks socket + pid + env opt-out.
+  try {
+    const { autoSpawnBackground } = await import('../../scripts/daemon.js')
+    autoSpawnBackground(cwd ?? process.cwd())
+  } catch {
+    // scripts/daemon.js missing in some test bundles — silent no-op
+  }
+  return null
 }
 
 /**
@@ -60,10 +88,10 @@ export async function enqueueTask(
     metadata: options.metadata ?? {},
   }
 
-  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+  const delegated = await delegateOrSpawn({
     cmd: 'enqueue',
     args,
-  })
+  }, cwd)
   if (delegated && typeof delegated === 'object' && 'task' in delegated) {
     const t = (delegated as { task: unknown }).task
     if (isTask(t)) return t
@@ -92,9 +120,9 @@ export async function enqueueTask(
 }
 
 export async function dequeueTask(cwd?: string): Promise<Task | null> {
-  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+  const delegated = await delegateOrSpawn({
     cmd: 'dequeue',
-  })
+  }, cwd)
   if (delegated && typeof delegated === 'object' && 'task' in delegated) {
     const t = (delegated as { task: unknown }).task
     if (t === null) return null
@@ -130,10 +158,10 @@ export async function getQueue(cwd?: string): Promise<QueueState> {
 }
 
 export async function completeTask(taskId: string, cwd?: string): Promise<Task | null> {
-  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+  const delegated = await delegateOrSpawn({
     cmd: 'complete',
     args: { taskId },
-  })
+  }, cwd)
   if (delegated && typeof delegated === 'object' && 'task' in delegated) {
     const t = (delegated as { task: unknown }).task
     if (t === null) return null
@@ -160,10 +188,10 @@ export async function completeTask(taskId: string, cwd?: string): Promise<Task |
 }
 
 export async function transitionToReviewPending(taskId: string, cwd?: string): Promise<Task | null> {
-  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+  const delegated = await delegateOrSpawn({
     cmd: 'review_pending',
     args: { taskId },
-  })
+  }, cwd)
   if (delegated && typeof delegated === 'object' && 'task' in delegated) {
     const t = (delegated as { task: unknown }).task
     if (t === null) return null
@@ -194,9 +222,9 @@ function isCount(value: unknown): value is { count: number } {
 }
 
 export async function pruneCancelledTasks(cwd?: string): Promise<number> {
-  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+  const delegated = await delegateOrSpawn({
     cmd: 'prune_cancelled',
-  })
+  }, cwd)
   if (isCount(delegated)) return delegated.count
 
   const queue = await loadQueue(cwd)
@@ -212,9 +240,9 @@ export async function pruneCancelledTasks(cwd?: string): Promise<number> {
 }
 
 export async function cancelAllTasks(cwd?: string): Promise<number> {
-  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+  const delegated = await delegateOrSpawn({
     cmd: 'cancel_all',
-  })
+  }, cwd)
   if (isCount(delegated)) return delegated.count
 
   const queue = await loadQueue(cwd)
@@ -241,10 +269,10 @@ export async function checkDodItem(
   dodItem: string,
   cwd?: string
 ): Promise<Task | null> {
-  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+  const delegated = await delegateOrSpawn({
     cmd: 'check_dod',
     args: { taskId, item: dodItem },
-  })
+  }, cwd)
   if (delegated && typeof delegated === 'object' && 'task' in delegated) {
     const t = (delegated as { task: unknown }).task
     if (t === null) return null
