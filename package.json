@@ -52,7 +52,6 @@
   },
   "optionalDependencies": {
     "@jidohyun/dohyun-daemon-darwin-arm64": "0.13.0",
-    "@jidohyun/dohyun-daemon-darwin-x64": "0.13.0",
     "@jidohyun/dohyun-daemon-linux-x64": "0.13.0",
     "@jidohyun/dohyun-daemon-linux-arm64": "0.13.0"
   },

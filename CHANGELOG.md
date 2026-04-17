@@ -15,14 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 host. On supported platforms npm pulls a matching pre-built release bundle
 through optional dependencies; the Node CLI locates and spawns it directly.
 
-- **Pre-built OTP releases** for darwin-arm64, darwin-x64, linux-x64,
-  linux-arm64. Each bundle ships ERTS + compiled BEAM files (~16 MB on
-  disk, glibc 2.31+ on Linux). Published as separate npm packages with
-  `os`/`cpu` constraints:
+- **Pre-built OTP releases** for darwin-arm64, linux-x64, linux-arm64.
+  Each bundle ships ERTS + compiled BEAM files (~16 MB on disk, glibc
+  2.31+ on Linux). Published as separate npm packages with `os`/`cpu`
+  constraints:
   - `@jidohyun/dohyun-daemon-darwin-arm64`
-  - `@jidohyun/dohyun-daemon-darwin-x64`
   - `@jidohyun/dohyun-daemon-linux-x64`
   - `@jidohyun/dohyun-daemon-linux-arm64`
+
+  darwin-x64 (Intel Mac) bundles intentionally skipped in 0.13.0 — the
+  GitHub-hosted `macos-13` runner pool has unbounded queue times as Apple
+  winds down Intel support. Intel Mac users fall through to the mix-from-
+  source path for now.
 - **`scripts/daemon.ts#locateDaemonExecution`** — finds the matching bundle
   in `node_modules/@jidohyun/dohyun-daemon-<os>-<cpu>/release/bin/` and
   runs `bin/dohyun_daemon start` detached. Falls back to

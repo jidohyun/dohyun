@@ -14,14 +14,15 @@ jobs:
         include:
           - target: darwin-arm64
             runs-on: macos-14
-          - target: darwin-x64
-            runs-on: macos-13
           - target: linux-x64
-            # 20.04 for the older glibc baseline — binaries produced here
+            # 22.04 for the older glibc baseline — binaries produced here
             # run on anything glibc 2.31+.
             runs-on: ubuntu-22.04
           - target: linux-arm64
             runs-on: ubuntu-22.04-arm
+          # darwin-x64 (macos-13) skipped: GitHub-hosted Intel macOS runners
+          # are being deprecated and queue times are unbounded. Track
+          # plan-windows-daemon.md for x64 + Windows revival.
     runs-on: ${{ matrix.runs-on }}
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +79,7 @@ jobs:
           path: release-artifacts
       - name: Place artifacts into each sub-package
         run: |
-          for target in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
+          for target in darwin-arm64 linux-x64 linux-arm64; do
             src="release-artifacts/daemon-$target"
             dst="packages/daemon-$target/release"
             rm -rf "$dst"
@@ -88,7 +89,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for target in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
+          for target in darwin-arm64 linux-x64 linux-arm64; do
             (cd "packages/daemon-$target" && npm publish --access public --provenance)
           done
 

@@ -155,9 +155,10 @@ dohyun daemon start    # spawns the Elixir sidecar in the background
 dohyun daemon status   # running | stopped | stale  (add --json for machines)
 ```
 
-On supported platforms (macOS arm64/x64, Linux x64/arm64 glibc) npm installs
-a pre-built release bundle automatically via optional dependencies — **no
-Elixir or mix installation required**. `dohyun daemon start` runs the bundled
+On supported platforms (macOS Apple Silicon, Linux x64/arm64 glibc) npm
+installs a pre-built release bundle automatically via optional dependencies
+— **no Elixir or mix installation required**. Intel Macs currently fall
+through to the mix-from-source path (see "Platform support" below). `dohyun daemon start` runs the bundled
 `bin/dohyun_daemon start` detached so the vm survives after your shell exits.
 
 For other platforms, or for development against the daemon source, install
