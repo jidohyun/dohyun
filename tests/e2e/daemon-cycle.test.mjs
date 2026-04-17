@@ -87,6 +87,38 @@ describe('daemon-on cycle', { skip: !elixirAvailable() }, () => {
     }
   })
 
+  test('concurrent enqueues through daemon preserve all tasks (no loss, no dup)', async () => {
+    const dir = sandbox()
+    let daemon = null
+    try {
+      daemon = await startDaemon(dir)
+
+      const mod = await import(resolve(repoRoot, 'dist', 'src', 'runtime', 'queue.js'))
+      const n = 20
+      const titles = Array.from({ length: n }, (_, i) => `parallel-${i}`)
+
+      const enqueued = await Promise.all(
+        titles.map((t) => mod.enqueueTask(t, { dod: [] }, dir))
+      )
+
+      assert.equal(enqueued.length, n)
+
+      const onDisk = JSON.parse(
+        readFileSync(join(dir, '.dohyun', 'runtime', 'queue.json'), 'utf8')
+      )
+      assert.equal(onDisk.tasks.length, n, 'every task must be persisted')
+      const diskTitles = onDisk.tasks.map((t) => t.title).sort()
+      assert.deepEqual(diskTitles, [...titles].sort(), 'no duplicates, no losses')
+
+      // ids are unique (daemon-assigned)
+      const ids = onDisk.tasks.map((t) => t.id)
+      assert.equal(new Set(ids).size, n, 'ids should be unique')
+    } finally {
+      if (daemon) await killDaemon(daemon)
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   test('daemon killed mid-session → CLI falls back, state consistent', async () => {
     const dir = sandbox()
     let daemon = null
