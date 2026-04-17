@@ -35,7 +35,7 @@ defmodule DohyunDaemon.StateServer do
 
     case load_queue(queue_path) do
       {:ok, queue} ->
-        {:ok, %{harness_root: root, queue_path: queue_path, queue: queue}}
+        {:ok, %{queue_path: queue_path, queue: queue}}
 
       {:error, reason} ->
         {:stop, reason}
