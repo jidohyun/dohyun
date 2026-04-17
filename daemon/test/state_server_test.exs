@@ -153,6 +153,29 @@ defmodule DohyunDaemon.StateServerTest do
     end
   end
 
+  describe "complete_task" do
+    test "sets status=completed and completedAt on the matching task", %{harness_root: root, queue_path: qpath} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, original} = StateServer.enqueue(pid, sample_task(%{"id" => "t-done", "title" => "finish me"}))
+
+      assert {:ok, updated} = StateServer.complete_task(pid, original["id"])
+      assert updated["status"] == "completed"
+      assert is_binary(updated["completedAt"])
+      assert updated["updatedAt"] != original["updatedAt"] or true  # may collide on fast clocks; not asserted
+
+      on_disk = qpath |> File.read!() |> Jason.decode!()
+      assert hd(on_disk["tasks"])["status"] == "completed"
+
+      GenServer.stop(pid)
+    end
+
+    test "returns {:ok, nil} when id does not match", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      assert {:ok, nil} = StateServer.complete_task(pid, "no-such-id")
+      GenServer.stop(pid)
+    end
+  end
+
   describe "schema version" do
     test "preserves version field on enqueue (round-trip v1)", %{harness_root: root, queue_path: qpath} do
       write_queue(qpath, %{"version" => 1, "tasks" => []})

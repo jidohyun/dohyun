@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const queueMod = await import(resolve(here, '..', '..', 'dist', 'src', 'runtime', 'queue.js'))
-const { enqueueTask, dequeueTask, getQueue } = queueMod
+const { enqueueTask, dequeueTask, completeTask, getQueue } = queueMod
 
 function sandbox() {
   const dir = mkdtempSync(join(tmpdir(), 'dohyun-queue-daemon-'))
@@ -202,7 +202,73 @@ test('dequeueTask: daemon returns task=null → fallback returns null from local
   }
 })
 
-// ── 4. daemon이 unknown_cmd 반환 → TS는 fallback하여 파일 직접 쓰기
+// ── 4. completeTask via daemon
+
+test('completeTask: daemon present → daemon-reported task wins', async () => {
+  const dir = sandbox()
+  const path = sockPath(dir)
+  const seeded = {
+    id: 'to-finish',
+    title: 'pending-task',
+    description: null,
+    status: 'in_progress',
+    priority: 'normal',
+    type: 'feature',
+    dod: [],
+    dodChecked: [],
+    startedAt: '2026-04-17T00:00:00Z',
+    completedAt: null,
+    metadata: {},
+    createdAt: '2026-04-17T00:00:00Z',
+    updatedAt: '2026-04-17T00:00:00Z',
+  }
+  writeFileSync(
+    join(dir, '.dohyun', 'runtime', 'queue.json'),
+    JSON.stringify({ version: 1, tasks: [seeded] })
+  )
+
+  const server = await startFakeDaemon(path, (env) => {
+    if (env.cmd === 'complete' && env.args?.taskId === 'to-finish') {
+      return {
+        ok: true,
+        data: {
+          task: { ...seeded, status: 'completed', completedAt: '2026-04-17T11:00:00Z' },
+        },
+      }
+    }
+    return { ok: false, error: 'unknown_cmd' }
+  })
+
+  try {
+    const result = await completeTask('to-finish', dir)
+    assert.ok(result)
+    assert.equal(result.status, 'completed')
+    assert.equal(result.completedAt, '2026-04-17T11:00:00Z')
+
+    // local file untouched
+    const onDisk = JSON.parse(readFileSync(join(dir, '.dohyun', 'runtime', 'queue.json'), 'utf8'))
+    assert.equal(onDisk.tasks[0].status, 'in_progress')
+  } finally {
+    await closeServer(server)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('completeTask: daemon says task=null → TS returns null without touching disk', async () => {
+  const dir = sandbox()
+  const path = sockPath(dir)
+  const server = await startFakeDaemon(path, () => ({ ok: true, data: { task: null } }))
+
+  try {
+    const result = await completeTask('ghost', dir)
+    assert.equal(result, null)
+  } finally {
+    await closeServer(server)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// ── 5. daemon이 unknown_cmd 반환 → TS는 fallback하여 파일 직접 쓰기
 
 test('enqueueTask: daemon rejects with unknown_cmd → falls back to direct write', async () => {
   const dir = sandbox()

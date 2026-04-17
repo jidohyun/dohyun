@@ -128,6 +128,19 @@ defmodule DohyunDaemon.SocketServer do
     end
   end
 
+  defp dispatch("complete", %{"args" => %{"taskId" => task_id}}, state_server)
+       when is_binary(task_id) do
+    case StateServer.complete_task(state_server, task_id) do
+      {:ok, nil} -> %{ok: true, data: %{task: nil}}
+      {:ok, task} -> %{ok: true, data: %{task: task}}
+      {:error, reason} -> %{ok: false, error: to_string(reason)}
+    end
+  end
+
+  defp dispatch("complete", _envelope, _state_server) do
+    %{ok: false, error: "invalid_args"}
+  end
+
   defp dispatch(_unknown, _envelope, _state_server) do
     %{ok: false, error: "unknown_cmd"}
   end

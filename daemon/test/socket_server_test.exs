@@ -160,6 +160,38 @@ defmodule DohyunDaemon.SocketServerTest do
     :gen_tcp.close(sock)
   end
 
+  test "complete cmd marks task completed when id matches", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{
+      "title" => "seeded",
+      "status" => "pending",
+      "priority" => "normal",
+      "type" => "feature",
+      "dod" => []
+    }}))
+    enqueue_reply = recv_line(sock)
+    task_id = enqueue_reply["data"]["task"]["id"]
+
+    send_line(sock, Jason.encode!(%{"cmd" => "complete", "args" => %{"taskId" => task_id}}))
+    response = recv_line(sock)
+
+    assert response["ok"] == true
+    assert response["data"]["task"]["status"] == "completed"
+    assert is_binary(response["data"]["task"]["completedAt"])
+
+    :gen_tcp.close(sock)
+  end
+
+  test "complete cmd returns task=nil for unknown id", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+    send_line(sock, Jason.encode!(%{"cmd" => "complete", "args" => %{"taskId" => "ghost"}}))
+    response = recv_line(sock)
+    assert response["ok"] == true
+    assert response["data"]["task"] == nil
+    :gen_tcp.close(sock)
+  end
+
   test "10 concurrent clients all get responses", %{sock_path: sock_path} do
     parent = self()
     n = 10
