@@ -86,6 +86,19 @@ defmodule DohyunDaemon.StateServer do
   end
 
   def handle_call({:complete_task, task_id}, _from, state) do
+    now = iso_now()
+    update_by_id(state, task_id, &Map.merge(&1, %{"status" => "completed", "completedAt" => now, "updatedAt" => now}))
+  end
+
+  # ── Internal ─────────────────────────────────────────────────
+
+  defp queue_path(root), do: Path.join([root, ".dohyun", "runtime", "queue.json"])
+
+  defp iso_now, do: DateTime.utc_now() |> DateTime.to_iso8601()
+
+  # Look up a task by id, run fun.(task), persist, and reply {:ok, updated}.
+  # Replies {:ok, nil} when the id is unknown.
+  defp update_by_id(state, task_id, fun) do
     tasks = state.queue["tasks"]
 
     case Enum.find_index(tasks, &(&1["id"] == task_id)) do
@@ -93,19 +106,13 @@ defmodule DohyunDaemon.StateServer do
         {:reply, {:ok, nil}, state}
 
       idx ->
-        now = DateTime.utc_now() |> DateTime.to_iso8601()
-        task = Enum.at(tasks, idx)
-        updated = Map.merge(task, %{"status" => "completed", "completedAt" => now, "updatedAt" => now})
+        updated = fun.(Enum.at(tasks, idx))
         new_tasks = List.replace_at(tasks, idx, updated)
         new_queue = %{state.queue | "tasks" => new_tasks}
         :ok = persist_atomic(state.queue_path, new_queue)
         {:reply, {:ok, updated}, %{state | queue: new_queue}}
     end
   end
-
-  # ── Internal ─────────────────────────────────────────────────
-
-  defp queue_path(root), do: Path.join([root, ".dohyun", "runtime", "queue.json"])
 
   defp load_queue(path) do
     case File.read(path) do
