@@ -92,6 +92,15 @@ export async function enqueueTask(
 }
 
 export async function dequeueTask(cwd?: string): Promise<Task | null> {
+  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+    cmd: 'dequeue',
+  })
+  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
+    const t = (delegated as { task: unknown }).task
+    if (t === null) return null
+    if (isTask(t)) return t
+  }
+
   const queue = await loadQueue(cwd)
   const pending = queue.tasks.find(t => t.status === 'pending')
   if (!pending) return null

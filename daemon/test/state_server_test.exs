@@ -127,6 +127,32 @@ defmodule DohyunDaemon.StateServerTest do
     end
   end
 
+  describe "dequeue" do
+    test "moves the first pending task to in_progress with startedAt", %{harness_root: root, queue_path: qpath} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "a", "title" => "first"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "b", "title" => "second"}))
+
+      assert {:ok, %{"id" => "a", "status" => "in_progress", "startedAt" => started}} =
+               StateServer.dequeue(pid)
+
+      refute is_nil(started)
+
+      on_disk = qpath |> File.read!() |> Jason.decode!()
+      [t1, t2] = on_disk["tasks"]
+      assert t1["status"] == "in_progress"
+      assert t2["status"] == "pending"
+
+      GenServer.stop(pid)
+    end
+
+    test "returns {:ok, nil} when no pending task remains", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      assert {:ok, nil} = StateServer.dequeue(pid)
+      GenServer.stop(pid)
+    end
+  end
+
   describe "schema version" do
     test "preserves version field on enqueue (round-trip v1)", %{harness_root: root, queue_path: qpath} do
       write_queue(qpath, %{"version" => 1, "tasks" => []})

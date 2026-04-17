@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const queueMod = await import(resolve(here, '..', '..', 'dist', 'src', 'runtime', 'queue.js'))
-const { enqueueTask, getQueue } = queueMod
+const { enqueueTask, dequeueTask, getQueue } = queueMod
 
 function sandbox() {
   const dir = mkdtempSync(join(tmpdir(), 'dohyun-queue-daemon-'))
@@ -128,7 +128,81 @@ test('enqueueTask: daemon present → daemon handles write, CLI does not touch q
   }
 })
 
-// ── 3. daemon이 unknown_cmd 반환 → TS는 fallback하여 파일 직접 쓰기
+// ── 3. dequeue도 daemon이 있으면 daemon이 처리하고 파일 fd 경합 없음
+
+test('dequeueTask: daemon present → daemon mutates, CLI does not touch queue.json', async () => {
+  const dir = sandbox()
+  const path = sockPath(dir)
+  const queueFile = join(dir, '.dohyun', 'runtime', 'queue.json')
+
+  // pre-seed queue.json with one pending task so the local path has something
+  // to fall back to — this proves the daemon response took precedence.
+  const seeded = {
+    id: 'seeded-id',
+    title: 'local-only',
+    description: null,
+    status: 'pending',
+    priority: 'normal',
+    type: 'feature',
+    dod: [],
+    dodChecked: [],
+    startedAt: null,
+    completedAt: null,
+    metadata: {},
+    createdAt: '2026-04-17T00:00:00Z',
+    updatedAt: '2026-04-17T00:00:00Z',
+  }
+  writeFileSync(queueFile, JSON.stringify({ version: 1, tasks: [seeded] }))
+
+  const server = await startFakeDaemon(path, (env) => {
+    if (env.cmd === 'dequeue') {
+      return {
+        ok: true,
+        data: {
+          task: {
+            ...seeded,
+            id: 'daemon-dequeued',
+            title: 'daemon-picked',
+            status: 'in_progress',
+            startedAt: '2026-04-17T10:00:00Z',
+          },
+        },
+      }
+    }
+    return { ok: false, error: 'unknown_cmd' }
+  })
+
+  try {
+    const task = await dequeueTask(dir)
+    assert.ok(task)
+    assert.equal(task.id, 'daemon-dequeued', 'task should come from daemon, not local file')
+    assert.equal(task.status, 'in_progress')
+
+    // queue.json still has the seeded entry untouched — daemon owned the write
+    const onDisk = JSON.parse(readFileSync(queueFile, 'utf8'))
+    assert.equal(onDisk.tasks[0].id, 'seeded-id')
+    assert.equal(onDisk.tasks[0].status, 'pending')
+  } finally {
+    await closeServer(server)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('dequeueTask: daemon returns task=null → fallback returns null from local queue', async () => {
+  const dir = sandbox()
+  const path = sockPath(dir)
+  const server = await startFakeDaemon(path, () => ({ ok: true, data: { task: null } }))
+
+  try {
+    const task = await dequeueTask(dir)
+    assert.equal(task, null)
+  } finally {
+    await closeServer(server)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// ── 4. daemon이 unknown_cmd 반환 → TS는 fallback하여 파일 직접 쓰기
 
 test('enqueueTask: daemon rejects with unknown_cmd → falls back to direct write', async () => {
   const dir = sandbox()

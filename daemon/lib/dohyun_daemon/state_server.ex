@@ -27,6 +27,10 @@ defmodule DohyunDaemon.StateServer do
     GenServer.call(server, {:enqueue, task})
   end
 
+  def dequeue(server \\ __MODULE__) do
+    GenServer.call(server, :dequeue)
+  end
+
   # ── Callbacks ────────────────────────────────────────────────
 
   @impl true
@@ -56,6 +60,24 @@ defmodule DohyunDaemon.StateServer do
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+    end
+  end
+
+  def handle_call(:dequeue, _from, state) do
+    tasks = state.queue["tasks"]
+
+    case Enum.find_index(tasks, &(&1["status"] == "pending")) do
+      nil ->
+        {:reply, {:ok, nil}, state}
+
+      idx ->
+        now = DateTime.utc_now() |> DateTime.to_iso8601()
+        pending = Enum.at(tasks, idx)
+        updated = Map.merge(pending, %{"status" => "in_progress", "startedAt" => now, "updatedAt" => now})
+        new_tasks = List.replace_at(tasks, idx, updated)
+        new_queue = %{state.queue | "tasks" => new_tasks}
+        :ok = persist_atomic(state.queue_path, new_queue)
+        {:reply, {:ok, updated}, %{state | queue: new_queue}}
     end
   end
 

@@ -124,6 +124,42 @@ defmodule DohyunDaemon.SocketServerTest do
     :gen_tcp.close(sock)
   end
 
+  test "dequeue cmd flips first pending task to in_progress", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    # seed one task
+    enqueue_args = %{
+      "title" => "to-dequeue",
+      "status" => "pending",
+      "priority" => "normal",
+      "type" => "feature",
+      "dod" => []
+    }
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => enqueue_args}))
+    _ = recv_line(sock)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "dequeue"}))
+    response = recv_line(sock)
+
+    assert response["ok"] == true
+    task = response["data"]["task"]
+    assert task["title"] == "to-dequeue"
+    assert task["status"] == "in_progress"
+    assert is_binary(task["startedAt"])
+
+    :gen_tcp.close(sock)
+  end
+
+  test "dequeue cmd returns task=nil when nothing pending", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+    send_line(sock, Jason.encode!(%{"cmd" => "dequeue"}))
+    response = recv_line(sock)
+    assert response["ok"] == true
+    assert response["data"]["task"] == nil
+    :gen_tcp.close(sock)
+  end
+
   test "10 concurrent clients all get responses", %{sock_path: sock_path} do
     parent = self()
     n = 10

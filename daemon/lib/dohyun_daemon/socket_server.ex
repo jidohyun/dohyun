@@ -120,6 +120,14 @@ defmodule DohyunDaemon.SocketServer do
     %{ok: false, error: "invalid_args"}
   end
 
+  defp dispatch("dequeue", _envelope, state_server) do
+    case StateServer.dequeue(state_server) do
+      {:ok, nil} -> %{ok: true, data: %{task: nil}}
+      {:ok, task} -> %{ok: true, data: %{task: task}}
+      {:error, reason} -> %{ok: false, error: to_string(reason)}
+    end
+  end
+
   defp dispatch(_unknown, _envelope, _state_server) do
     %{ok: false, error: "unknown_cmd"}
   end
