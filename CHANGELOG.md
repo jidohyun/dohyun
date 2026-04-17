@@ -15,6 +15,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metrics / time tracking
 - No-op tidy detection (L006)
 
+## [0.10.0] - 2026-04-17
+
+### Added — Optional Elixir daemon + wire contract v1
+
+- **`daemon/` Elixir/OTP sidecar** — `Lock` (PID single-instance enforcement),
+  `StateServer` (serialized queue mailbox), `SocketServer` (Unix socket JSON
+  line protocol), wired under `DohyunDaemon.Application`. Optional: the npm
+  package still runs without BEAM.
+- **`src/runtime/daemon-client.ts` + `daemon-wire.ts`** — `node:net`-only
+  client with configurable connect (default 200 ms) and response (default
+  1 s) timeouts. `tryDelegate()` swallows errors and flips `usedFallback`
+  so CLI call sites can transparently drop back to direct file writes.
+- **`queue.ts#enqueueTask` delegates to daemon first** — if `daemon.sock`
+  answers `ok:true`, the daemon owns the write and `queue.json` is not
+  touched by the CLI. On any failure (no socket, timeout, `ok:false`) the
+  old direct-write path runs unchanged.
+- **Wire format v1** — line-delimited JSON envelope
+  `{"cmd": string, "args"?: object, "id"?: string}` → reply
+  `{"ok": true, "data": ...}` or `{"ok": false, "error": "..."}`. Contract
+  is stable across 0.x; see [docs/daemon-wire-format.md](docs/daemon-wire-format.md).
+
+### Why minor bump
+
+Purely opt-in — no behavior change when the daemon is not running. Existing
+state files, CLI output, and hooks are identical.
+
+### Distribution note
+
+`daemon/` is **not shipped in the npm tarball**. Clone this repo to run it.
+
+### Tests
+
+- 7 daemon-client unit tests (no-socket fallback, sendCmd, connect/response
+  timeouts, envelope args, ok/error branches).
+- 3 queue-with-daemon tests (no daemon → direct write; daemon present →
+  daemon handles write; daemon `ok:false` → CLI fallback).
+- 3 E2E daemon-cycle tests (always-runs fallback; daemon on; daemon killed
+  mid-session). Elixir-dependent block is `describe.skip` when `mix` is not
+  on PATH.
+
 ## [0.9.0] - 2026-04-16
 
 ### Added — Machine-Readable Output

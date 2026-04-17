@@ -143,9 +143,10 @@ All schemas are defined in `src/runtime/contracts.ts`.
 `.dohyun/runtime/queue.json` via a single GenServer mailbox. It eliminates
 races when two `dohyun` commands run concurrently in different terminals.
 
-**You do not need it.** The npm package works without BEAM installed. Turn
-it on only if you run sessions in parallel or want a stable socket wire for
-external dashboards.
+**You do not need it.** The npm package works without BEAM installed, and
+`daemon/` itself is **not published to npm** — it lives only in this repo.
+Turn it on only if you run sessions in parallel or want a stable socket wire
+for external dashboards. To run it, clone this repo.
 
 ### Turn it on
 
