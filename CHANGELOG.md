@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-04-17
+
+### Changed
+
+- **Auto-spawn prints a one-line notice** to stderr when the daemon is
+  about to start in the background: `[dohyun] starting background daemon (release|mix)`.
+  Makes it clear why a new BEAM vm just appeared. Suppress with
+  `DOHYUN_QUIET=1`.
+- **Idle shutdown is logged** to `.dohyun/logs/daemon.log` with the
+  elapsed idle time and threshold — useful when reasoning about why the
+  next CLI call had to re-spawn.
+
+### Fixed
+
+- CI publish workflow now has the right NPM_TOKEN scope to publish all
+  four sub-packages; 0.14.0 was uploaded manually, 0.14.1 onwards flows
+  through GitHub Actions.
+
 ## [0.14.0] - 2026-04-17
 
 ### Added — Zero-config daemon lifecycle
