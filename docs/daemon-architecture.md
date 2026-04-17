@@ -35,12 +35,22 @@ state files directly as before.
 
 ## Startup flow
 
-1. `mix run --no-halt` starts the OTP Application.
+1. `dohyun daemon start` (or `mix run --no-halt` directly) starts the OTP
+   Application. `daemon start` runs `mix` with `detached: true` + `unref()` so
+   the BEAM vm survives after the parent shell exits; logs go to
+   `.dohyun/logs/daemon.log`.
 2. `Application.start/2` spins up a supervision tree with `StateServer` and
    `SocketServer`.
-3. `StateServer.init/1` reads `queue.json` into memory. On an unsupported
+3. `Lock.acquire/1` writes the OS pid to `.dohyun/daemon.pid`, bailing out if
+   an alive daemon already owns the lock (`{:error, {:already_locked, pid}}`).
+4. `StateServer.init/1` reads `queue.json` into memory. On an unsupported
    schema version it refuses to start, preventing silent corruption.
-4. `SocketServer.init/1` binds the Unix socket and launches the accept loop.
+5. `SocketServer.init/1` binds the Unix socket and launches the accept loop.
+
+`dohyun daemon stop` sends SIGTERM to the pid, waits up to 8 s, then sends
+SIGKILL as a last resort. Because BEAM exits non-gracefully on SIGTERM, the
+stale socket/pid files are cleaned up by the TS CLI after the process is
+confirmed gone.
 
 ## Fallback strategy
 

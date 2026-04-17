@@ -119,6 +119,19 @@ export async function runDoctor(cwd: string, opts: DoctorOptions = {}): Promise<
     console.log(`  ${icon} ${name}  ${check.detail}`)
   }
 
+  // Daemon — informational only. Absent daemon is not a doctor failure.
+  const { inspectDaemon } = await import('./daemon.js')
+  const daemonReport = inspectDaemon(cwd)
+  const daemonIcon = daemonReport.status === 'running'
+    ? '[OK]'
+    : daemonReport.status === 'stale' ? '[!!]' : '[--]'
+  const daemonDetail = daemonReport.status === 'running'
+    ? `running (pid=${daemonReport.pid})`
+    : daemonReport.status === 'stale'
+      ? 'stale pid/socket — run `dohyun daemon stop` to clean up'
+      : 'stopped (optional — `dohyun daemon start` to enable)'
+  console.log(`  ${daemonIcon} ${'daemon'.padEnd(maxName)}  ${daemonDetail}`)
+
   const failed = checks.filter(c => !c.ok).length
   console.log(`\n${checks.length} checks, ${failed} issue(s)`)
 

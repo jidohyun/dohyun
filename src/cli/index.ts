@@ -105,6 +105,12 @@ async function main() {
       await runMetrics(args, workDir)
       break
     }
+    case 'daemon': {
+      const { runDaemon } = await import('../../scripts/daemon.js')
+      const [sub, ...rest] = args
+      await runDaemon(workDir, sub, rest)
+      break
+    }
     default: {
       console.log(`
 dohyun — Personal AI Workflow Harness (Augmented Coding)
@@ -142,6 +148,8 @@ Usage:
   dohyun learn list          List learning candidates newest first
   dohyun metrics             Show task-type totals, avg DoD size, breath cycle
   dohyun metrics --json      Same, as machine-readable JSON
+  dohyun daemon status       Show Elixir sidecar status (running | stopped | stale)
+  dohyun daemon status --json  Same, as machine-readable JSON
 `)
       if (command && command !== 'help' && command !== '--help') {
         console.error(`Unknown command: ${command}`)

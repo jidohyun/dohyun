@@ -151,10 +151,13 @@ for external dashboards. To run it, clone this repo.
 ### Turn it on
 
 ```bash
-cd daemon
-mix deps.get
-mix run --no-halt
+dohyun daemon start    # spawns the Elixir sidecar in the background
+dohyun daemon status   # running | stopped | stale  (add --json for machines)
 ```
+
+First-time setup needs `mix deps.get` inside the `daemon/` directory so Jason
+is fetched. `dohyun daemon start` then locates the repo automatically (override
+with `DOHYUN_DAEMON_REPO=<path>` if you moved it).
 
 The daemon binds `.dohyun/daemon.sock`. The TS CLI auto-detects the socket
 and delegates state mutations through it; if the socket is absent it silently
@@ -162,8 +165,13 @@ falls back to direct file writes.
 
 ### Turn it off
 
-Stop the daemon process. Nothing else to do — the next CLI call writes state
-files directly.
+```bash
+dohyun daemon stop
+```
+
+SIGTERM first, then SIGKILL after 8 seconds if the BEAM vm refuses to leave.
+Stale socket/pid files left behind by hard kills are cleaned up on the next
+`daemon stop` or `daemon start`.
 
 ### Docs
 
