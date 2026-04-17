@@ -11,6 +11,15 @@ The harness separates **policy** (what to do) from **implementation** (how to do
 | Contract | Interface between policy and implementation | `src/runtime/contracts.ts` |
 | Validation | Runtime schema enforcement | `src/runtime/schemas.ts` |
 
+## Optional Runtime: Elixir daemon
+
+An optional `dohyun_daemon` (Elixir/OTP) can sit behind the CLI to serialize
+writes and eliminate race conditions between concurrent sessions. It is
+**purely opt-in**: the CLI works without it, and the npm package does not
+depend on BEAM. See [daemon-architecture.md](daemon-architecture.md) for the
+process layout and [daemon-wire-format.md](daemon-wire-format.md) for the
+socket envelope contract.
+
 ## Current Runtime: Node (file-based)
 
 ```

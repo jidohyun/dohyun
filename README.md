@@ -137,32 +137,47 @@ State files under `.dohyun/` have stable schemas. They are the contract between:
 
 All schemas are defined in `src/runtime/contracts.ts`.
 
-## Future: Elixir Runtime Migration
+## Elixir daemon (optional)
 
-This harness is designed for eventual migration to an Elixir backend:
+`daemon/` is an optional Elixir/OTP subproject that serializes writes to
+`.dohyun/runtime/queue.json` via a single GenServer mailbox. It eliminates
+races when two `dohyun` commands run concurrently in different terminals.
 
-### What stays in Node
-- CLI interface (`src/cli/`)
-- Skill definitions (`skills/`)
-- Prompts and templates
+**You do not need it.** The npm package works without BEAM installed. Turn
+it on only if you run sessions in parallel or want a stable socket wire for
+external dashboards.
 
-### What moves to Elixir
-- Queue management → GenServer with persistent queue
-- Session state → ETS or Agent process
-- Continuation logic → GenServer with periodic checks
-- Background tasks → Task.Supervisor
+### Turn it on
 
-### Migration path
-1. **Phase 1**: Elixir reads `.dohyun/` state files (JSON compat)
-2. **Phase 2**: Elixir manages queue, Node CLI calls via HTTP/port
-3. **Phase 3**: Elixir owns runtime, Node is thin CLI shell
+```bash
+cd daemon
+mix deps.get
+mix run --no-halt
+```
 
-### Why this is easy
-- `RuntimeAdapter` interface in `contracts.ts` defines the boundary
-- State file schemas are language-independent JSON
-- Policy (what to do) is separated from mechanism (how to do it)
-- Hooks are thin — no business logic to port
-- Queue format is explicit and structured
+The daemon binds `.dohyun/daemon.sock`. The TS CLI auto-detects the socket
+and delegates state mutations through it; if the socket is absent it silently
+falls back to direct file writes.
+
+### Turn it off
+
+Stop the daemon process. Nothing else to do — the next CLI call writes state
+files directly.
+
+### Docs
+
+- [docs/daemon-architecture.md](docs/daemon-architecture.md) — process
+  layout, startup flow, fallback strategy.
+- [docs/daemon-wire-format.md](docs/daemon-wire-format.md) — Unix socket
+  JSON envelope contract (stable across 0.x).
+
+### Why this is easy to adopt
+
+- `RuntimeAdapter` interface in `contracts.ts` defines the boundary.
+- State file schemas are language-independent JSON.
+- Policy (what to do) is separated from mechanism (how to do it).
+- Hooks are thin — no business logic to port.
+- Queue format is explicit and structured.
 
 ## Development
 
