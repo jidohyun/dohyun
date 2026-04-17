@@ -27,6 +27,10 @@ export const paths = {
   // Logs
   log: (cwd?: string) => resolve(harnessRoot(cwd), 'logs', 'log.md'),
 
+  // Daemon IPC (optional Elixir sidecar)
+  daemonSock: (cwd?: string) => resolve(harnessRoot(cwd), 'daemon.sock'),
+  daemonPid: (cwd?: string) => resolve(harnessRoot(cwd), 'daemon.pid'),
+
   // Dirs
   plans: (cwd?: string) => resolve(harnessRoot(cwd), 'plans'),
   logs: (cwd?: string) => resolve(harnessRoot(cwd), 'logs'),
