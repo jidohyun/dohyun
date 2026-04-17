@@ -143,6 +143,12 @@ defmodule DohyunDaemon.SocketServer do
     %{ok: false, error: "invalid_args"}
   end
 
+  defp dispatch("cancel_all", _envelope, state_server),
+    do: format_count_reply(StateServer.cancel_all(state_server))
+
+  defp dispatch("prune_cancelled", _envelope, state_server),
+    do: format_count_reply(StateServer.prune_cancelled(state_server))
+
   defp dispatch(_unknown, _envelope, _state_server) do
     %{ok: false, error: "unknown_cmd"}
   end
@@ -157,6 +163,11 @@ defmodule DohyunDaemon.SocketServer do
   defp format_task_reply({:ok, nil}), do: %{ok: true, data: %{task: nil}}
   defp format_task_reply({:ok, task}), do: %{ok: true, data: %{task: task}}
   defp format_task_reply({:error, reason}), do: %{ok: false, error: to_string(reason)}
+
+  defp format_count_reply({:ok, count}) when is_integer(count),
+    do: %{ok: true, data: %{count: count}}
+
+  defp format_count_reply({:error, reason}), do: %{ok: false, error: to_string(reason)}
 
   # ── Task construction ────────────────────────────────────────
 

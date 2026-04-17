@@ -223,6 +223,55 @@ defmodule DohyunDaemon.StateServerTest do
     end
   end
 
+  describe "cancel_all" do
+    test "marks pending + in_progress as cancelled, returns count", %{harness_root: root, queue_path: qpath} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "p", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "ip", "status" => "in_progress"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "done", "status" => "completed"}))
+
+      assert {:ok, 2} = StateServer.cancel_all(pid)
+
+      statuses =
+        qpath
+        |> File.read!()
+        |> Jason.decode!()
+        |> Map.fetch!("tasks")
+        |> Enum.map(& &1["status"])
+
+      assert Enum.sort(statuses) == ["cancelled", "cancelled", "completed"]
+
+      GenServer.stop(pid)
+    end
+
+    test "returns 0 when nothing is active", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      assert {:ok, 0} = StateServer.cancel_all(pid)
+      GenServer.stop(pid)
+    end
+  end
+
+  describe "prune_cancelled" do
+    test "removes cancelled tasks, returns removed count", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "a", "status" => "cancelled"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "b", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "c", "status" => "cancelled"}))
+
+      assert {:ok, 2} = StateServer.prune_cancelled(pid)
+      %{"tasks" => remaining} = StateServer.get_queue(pid)
+      assert Enum.map(remaining, & &1["id"]) == ["b"]
+
+      GenServer.stop(pid)
+    end
+
+    test "returns 0 when no cancelled tasks exist", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      assert {:ok, 0} = StateServer.prune_cancelled(pid)
+      GenServer.stop(pid)
+    end
+  end
+
   describe "schema version" do
     test "preserves version field on enqueue (round-trip v1)", %{harness_root: root, queue_path: qpath} do
       write_queue(qpath, %{"version" => 1, "tasks" => []})

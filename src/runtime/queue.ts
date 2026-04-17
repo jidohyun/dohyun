@@ -188,7 +188,17 @@ export async function transitionToReviewPending(taskId: string, cwd?: string): P
   return updated
 }
 
+function isCount(value: unknown): value is { count: number } {
+  return !!value && typeof value === 'object' && 'count' in value
+    && typeof (value as { count: unknown }).count === 'number'
+}
+
 export async function pruneCancelledTasks(cwd?: string): Promise<number> {
+  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+    cmd: 'prune_cancelled',
+  })
+  if (isCount(delegated)) return delegated.count
+
   const queue = await loadQueue(cwd)
   const removed = queue.tasks.filter(t => t.status === 'cancelled')
   if (removed.length === 0) return 0
@@ -202,6 +212,11 @@ export async function pruneCancelledTasks(cwd?: string): Promise<number> {
 }
 
 export async function cancelAllTasks(cwd?: string): Promise<number> {
+  const delegated = await new DaemonClient(paths.daemonSock(cwd)).tryDelegate({
+    cmd: 'cancel_all',
+  })
+  if (isCount(delegated)) return delegated.count
+
   const queue = await loadQueue(cwd)
   const active = queue.tasks.filter(t =>
     t.status === 'pending' || t.status === 'in_progress'

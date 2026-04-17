@@ -43,6 +43,14 @@ defmodule DohyunDaemon.StateServer do
     GenServer.call(server, {:check_dod, task_id, item})
   end
 
+  def cancel_all(server \\ __MODULE__) do
+    GenServer.call(server, :cancel_all)
+  end
+
+  def prune_cancelled(server \\ __MODULE__) do
+    GenServer.call(server, :prune_cancelled)
+  end
+
   # ── Callbacks ────────────────────────────────────────────────
 
   @impl true
@@ -115,6 +123,41 @@ defmodule DohyunDaemon.StateServer do
         Map.merge(task, %{"dodChecked" => checked ++ [item], "updatedAt" => now})
       end
     end)
+  end
+
+  def handle_call(:cancel_all, _from, state) do
+    now = iso_now()
+    tasks = state.queue["tasks"]
+    active? = &(&1["status"] in ["pending", "in_progress"])
+    count = Enum.count(tasks, active?)
+
+    if count == 0 do
+      {:reply, {:ok, 0}, state}
+    else
+      new_tasks =
+        Enum.map(tasks, fn task ->
+          if active?.(task),
+            do: Map.merge(task, %{"status" => "cancelled", "updatedAt" => now}),
+            else: task
+        end)
+
+      new_queue = %{state.queue | "tasks" => new_tasks}
+      :ok = persist_atomic(state.queue_path, new_queue)
+      {:reply, {:ok, count}, %{state | queue: new_queue}}
+    end
+  end
+
+  def handle_call(:prune_cancelled, _from, state) do
+    tasks = state.queue["tasks"]
+    removed = Enum.count(tasks, &(&1["status"] == "cancelled"))
+
+    if removed == 0 do
+      {:reply, {:ok, 0}, state}
+    else
+      new_queue = %{state.queue | "tasks" => Enum.reject(tasks, &(&1["status"] == "cancelled"))}
+      :ok = persist_atomic(state.queue_path, new_queue)
+      {:reply, {:ok, removed}, %{state | queue: new_queue}}
+    end
   end
 
   # ── Internal ─────────────────────────────────────────────────

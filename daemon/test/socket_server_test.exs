@@ -224,6 +224,38 @@ defmodule DohyunDaemon.SocketServerTest do
     :gen_tcp.close(sock)
   end
 
+  test "cancel_all cmd returns {count: N}", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{
+      "title" => "x", "status" => "pending", "priority" => "normal", "type" => "feature", "dod" => []
+    }}))
+    _ = recv_line(sock)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "cancel_all"}))
+    response = recv_line(sock)
+    assert response["ok"] == true
+    assert response["data"]["count"] == 1
+
+    :gen_tcp.close(sock)
+  end
+
+  test "prune_cancelled cmd returns {count: N}", %{sock_path: sock_path} do
+    sock = connect(sock_path)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "enqueue", "args" => %{
+      "title" => "y", "status" => "cancelled", "priority" => "normal", "type" => "feature", "dod" => []
+    }}))
+    _ = recv_line(sock)
+
+    send_line(sock, Jason.encode!(%{"cmd" => "prune_cancelled"}))
+    response = recv_line(sock)
+    assert response["ok"] == true
+    assert response["data"]["count"] == 1
+
+    :gen_tcp.close(sock)
+  end
+
   test "10 concurrent clients all get responses", %{sock_path: sock_path} do
     parent = self()
     n = 10
