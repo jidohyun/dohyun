@@ -1,0 +1,23 @@
+{
+  "name": "@jidohyun/dohyun-daemon-darwin-arm64",
+  "version": "0.13.0",
+  "description": "Pre-built dohyun daemon release for macOS arm64 (Apple Silicon)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jidohyun/dohyun.git"
+  },
+  "homepage": "https://github.com/jidohyun/dohyun#readme",
+  "bugs": {
+    "url": "https://github.com/jidohyun/dohyun/issues"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "release/"
+  ]
+}
