@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { elixirAvailable, startDaemon, killDaemon, sleep } from './daemon-helpers.mjs'
+import { elixirAvailable, startDaemon, killDaemon, sleep } from './helpers/daemon-spawn.mjs'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const repoRoot = resolve(here, '..', '..')
