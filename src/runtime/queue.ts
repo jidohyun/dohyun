@@ -2,7 +2,7 @@ import type { Task, TaskPriority, TaskStatus, TaskType, QueueState } from './con
 import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now, uuid } from '../utils/time.js'
-import { DaemonClient } from './daemon-client.js'
+import { createDefaultDaemonClient } from './daemon-factory.js'
 import type { DaemonEnvelope } from './daemon-wire.js'
 
 function isTask(value: unknown): value is Task {
@@ -22,7 +22,7 @@ function isTask(value: unknown): value is Task {
  *     genuine error — spawning a new copy would not help)
  */
 async function delegateOrSpawn(envelope: DaemonEnvelope, cwd?: string): Promise<unknown | null> {
-  const client = new DaemonClient(paths.daemonSock(cwd))
+  const client = createDefaultDaemonClient(cwd)
   const result = await client.tryDelegate(envelope)
   if (!client.usedFallback) return result
 
@@ -341,7 +341,7 @@ export async function reorderPending(
   target: ReorderTarget,
   cwd?: string
 ): Promise<void> {
-  const client = new DaemonClient(paths.daemonSock(cwd))
+  const client = createDefaultDaemonClient(cwd)
   const reply = await client.sendCmd('reorder', { taskId, target }).catch(() => null)
   if (reply && reply.ok) return
   if (reply && !reply.ok && reply.error && reply.error !== 'unknown_cmd') {

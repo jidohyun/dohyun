@@ -20,11 +20,11 @@ const DEFAULT_RESPONSE_TIMEOUT_MS = 1000
  */
 export class DaemonClient {
   public usedFallback = false
-  private readonly connectTimeoutMs: number
-  private readonly responseTimeoutMs: number
+  public readonly connectTimeoutMs: number
+  public readonly responseTimeoutMs: number
 
   constructor(
-    private readonly socketPath: string,
+    public readonly socketPath: string,
     opts: DaemonClientOptions = {}
   ) {
     this.connectTimeoutMs = opts.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS
