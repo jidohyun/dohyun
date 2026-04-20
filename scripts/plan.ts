@@ -1,5 +1,5 @@
 import { readText } from '../src/utils/fs.js'
-import { enqueueTask, cancelAllTasks, pruneCancelledTasks, taskSignature } from '../src/runtime/queue.js'
+import { replacePendingTasks, taskSignature } from '../src/runtime/queue.js'
 import { readQueue } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
 import { lintPlan } from '../src/runtime/lint.js'
@@ -165,36 +165,40 @@ export async function runPlan(args: string[], cwd: string): Promise<void> {
       return
     }
 
-    // Preserve completed history. Remove only pending/in_progress (via cancel
-    // + prune) and any lingering cancelled rows. Completed tasks stay so a
-    // re-load of the same plan does not lose progress.
-    const cancelled = await cancelAllTasks(cwd)
-    const pruned = await pruneCancelledTasks(cwd)
-    if (pruned > 0) {
-      console.log(`Cleared ${pruned} stale task(s) (${cancelled} were active)`)
-    }
-
     // Dedupe against already-progressed tasks (completed or awaiting review)
     // by (title + dod) signature so identical plan entries are skipped
-    // instead of re-enqueued.
+    // instead of re-enqueued. Read before replace so the signature set
+    // reflects pre-replace completed history.
     const currentQueue = await readQueue(cwd)
     const completedSignatures = new Set(
       (currentQueue?.tasks ?? [])
         .filter(t => t.status === 'completed' || t.status === 'review-pending')
         .map(t => taskSignature(t.title, t.dod))
     )
+    const priorActive = (currentQueue?.tasks ?? [])
+      .filter(t => t.status === 'pending' || t.status === 'in_progress' || t.status === 'cancelled')
+      .length
 
     const toEnqueue = tasks.filter(
       t => !completedSignatures.has(taskSignature(t.title, t.dod))
     )
     const skippedCount = tasks.length - toEnqueue.length
 
-    for (const task of toEnqueue) {
-      await enqueueTask(task.title, {
-        type: task.type,
-        dod: task.dod,
-        metadata: task.files.length > 0 ? { files: task.files } : {},
-      }, cwd)
+    // Single-writer replace. Daemon (if running) does the whole swap in one
+    // envelope; otherwise CLI writes once without auto-spawning — see
+    // docs/conventions.md § Single Writer Principle.
+    await replacePendingTasks(
+      toEnqueue.map(t => ({
+        title: t.title,
+        type: t.type,
+        dod: t.dod,
+        metadata: t.files.length > 0 ? { files: t.files } : {},
+      })),
+      cwd,
+    )
+
+    if (priorActive > 0) {
+      console.log(`Cleared ${priorActive} stale task(s)`)
     }
 
     await appendLog(

@@ -57,6 +57,26 @@ async function delegateOrSpawn(envelope: DaemonEnvelope, cwd?: string): Promise<
 }
 
 /**
+ * Try the daemon, but do NOT fire-and-forget spawn on miss. Returns the
+ * daemon reply (or null if the daemon declined / absent). This is the
+ * right primitive for "bulk state replacement" callers like plan load,
+ * where interleaving an auto-spawn with direct file I/O introduces a race:
+ *
+ *   - CLI writes queue.json directly (cancel/prune/enqueue split)
+ *   - background daemon boots mid-sequence, loads a stale snapshot,
+ *     then overwrites the file on its next accepted command,
+ *     dropping whatever the CLI just wrote.
+ *
+ * Use `delegateOrSpawn` for small individual writes where warming the
+ * daemon is a UX win; use `delegateNoSpawn` for sequences that must be
+ * atomic with respect to the file.
+ */
+async function delegateNoSpawn(envelope: DaemonEnvelope, cwd?: string): Promise<unknown | null> {
+  const client = createDefaultDaemonClient(cwd)
+  return await client.tryDelegate(envelope)
+}
+
+/**
  * Stable signature for task equality when comparing a plan re-load
  * against tasks already in the queue. Compares by title + DoD items
  * (order-insensitive) so that re-loading the same plan does not duplicate
@@ -269,6 +289,74 @@ export async function cancelAllTasks(cwd?: string): Promise<number> {
   })
 
   return active.length
+}
+
+/**
+ * Shape of a task coming from a parsed plan file. Title + dod + type +
+ * optional metadata — no id, no timestamps (those are assigned here).
+ */
+export interface PlanTask {
+  title: string
+  type: TaskType
+  dod: string[]
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Atomically replace all non-completed tasks in the queue with a new
+ * pending set. Preserves completed / review-pending tasks so re-loading
+ * the same plan does not lose audit history.
+ *
+ * Single-writer: either the daemon performs the whole replacement inside
+ * its own memory + writes the file, or — if no daemon is running — the
+ * CLI writes once with `writeJson` and returns without auto-spawning a
+ * daemon. There is no interleaving window in which both file-direct and
+ * daemon-in-memory states exist, which removes the "first task drop"
+ * race seen during plan reload (notepad 2026-04-20).
+ */
+export async function replacePendingTasks(
+  tasks: readonly PlanTask[],
+  cwd?: string,
+): Promise<readonly Task[]> {
+  const delegated = await delegateNoSpawn({
+    cmd: 'replace_pending',
+    args: { tasks: tasks.map(t => ({
+      title: t.title,
+      type: t.type,
+      dod: t.dod,
+      metadata: t.metadata ?? {},
+    })) },
+  }, cwd)
+
+  if (delegated && typeof delegated === 'object' && 'tasks' in delegated) {
+    const reply = (delegated as { tasks: unknown }).tasks
+    if (Array.isArray(reply) && reply.every(isTask)) return reply as Task[]
+  }
+
+  // Direct file fallback — no spawn.
+  const queue = await loadQueue(cwd)
+  const kept = queue.tasks.filter(
+    t => t.status === 'completed' || t.status === 'review-pending',
+  )
+  const created: Task[] = tasks.map(t => createTask({
+    title: t.title,
+    description: null,
+    status: 'pending',
+    priority: 'normal',
+    type: t.type,
+    dod: t.dod,
+    dodChecked: [],
+    startedAt: null,
+    completedAt: null,
+    metadata: t.metadata ?? {},
+  }))
+
+  await writeJson(paths.queue(cwd), {
+    ...queue,
+    tasks: [...kept, ...created],
+  })
+
+  return created
 }
 
 export async function checkDodItem(
