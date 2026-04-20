@@ -45,6 +45,14 @@ defmodule DohyunDaemon.StateServer do
     GenServer.call(server, {:review_pending, task_id})
   end
 
+  def review_approve(server \\ __MODULE__, task_id, reviewed_at) do
+    GenServer.call(server, {:review_approve, task_id, reviewed_at})
+  end
+
+  def review_reject(server \\ __MODULE__, task_id, reopens) do
+    GenServer.call(server, {:review_reject, task_id, reopens})
+  end
+
   def check_dod(server \\ __MODULE__, task_id, item) do
     GenServer.call(server, {:check_dod, task_id, item})
   end
@@ -148,6 +156,33 @@ defmodule DohyunDaemon.StateServer do
   def handle_call({:review_pending, task_id}, _from, state) do
     now = iso_now()
     update_by_id(state, task_id, &Map.merge(&1, %{"status" => "review-pending", "updatedAt" => now}))
+  end
+
+  def handle_call({:review_approve, task_id, reviewed_at}, _from, state) do
+    reviewed = reviewed_at || iso_now()
+    update_by_id_with_guard(state, task_id, "review-pending", fn task ->
+      Map.merge(task, %{
+        "status" => "completed",
+        "completedAt" => reviewed,
+        "reviewedAt" => reviewed,
+        "updatedAt" => reviewed
+      })
+    end)
+  end
+
+  def handle_call({:review_reject, task_id, reopens}, _from, state) do
+    now = iso_now()
+    reopen_list = reopens || []
+    update_by_id_with_guard(state, task_id, "review-pending", fn task ->
+      checked = task["dodChecked"] || []
+      remaining = Enum.reject(checked, fn item -> item in reopen_list end)
+      Map.merge(task, %{
+        "status" => "in_progress",
+        "dodChecked" => remaining,
+        "completedAt" => nil,
+        "updatedAt" => now
+      })
+    end)
   end
 
   def handle_call({:check_dod, task_id, item}, _from, state) do
@@ -268,6 +303,31 @@ defmodule DohyunDaemon.StateServer do
         new_queue = %{state.queue | "tasks" => new_tasks}
         :ok = persist_atomic(state.queue_path, new_queue)
         {:reply, {:ok, updated}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
+    end
+  end
+
+  # Same shape as update_by_id, but rejects the transition when the current
+  # task status != required_status. Used by review_approve/reject where we
+  # must not flip a task that already moved out of review-pending.
+  defp update_by_id_with_guard(state, task_id, required_status, fun) do
+    tasks = state.queue["tasks"]
+
+    case Enum.find_index(tasks, &(&1["id"] == task_id)) do
+      nil ->
+        {:reply, {:error, :task_not_found}, state}
+
+      idx ->
+        task = Enum.at(tasks, idx)
+
+        if task["status"] != required_status do
+          {:reply, {:error, :not_review_pending}, state}
+        else
+          updated = fun.(task)
+          new_tasks = List.replace_at(tasks, idx, updated)
+          new_queue = %{state.queue | "tasks" => new_tasks}
+          :ok = persist_atomic(state.queue_path, new_queue)
+          {:reply, {:ok, updated}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
+        end
     end
   end
 

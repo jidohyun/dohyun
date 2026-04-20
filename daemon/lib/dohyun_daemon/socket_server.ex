@@ -134,16 +134,26 @@ defmodule DohyunDaemon.SocketServer do
   defp dispatch("review_pending", envelope, state_server),
     do: dispatch_task_mutation(envelope, &StateServer.transition_to_review_pending(state_server, &1))
 
-  # review_approve / review_reject: routes land here so the daemon's
-  # in-memory queue learns of the transition. Not yet implemented in the
-  # state server — fall through to unknown_cmd so the TS caller uses its
-  # file-direct fallback path. The state-server implementation is a
-  # follow-up task (see plan-2026-04-20-review-approve-daemon.md T3).
+  # review_approve / review_reject: the daemon's in-memory queue learns of
+  # the transition so a subsequent write (enqueue/check_dod/…) cannot
+  # clobber the completed/in_progress status with a stale snapshot.
+  defp dispatch("review_approve", %{"args" => %{"taskId" => task_id} = args}, state_server)
+       when is_binary(task_id) do
+    reviewed_at = Map.get(args, "reviewedAt")
+    format_task_reply(StateServer.review_approve(state_server, task_id, reviewed_at))
+  end
+
   defp dispatch("review_approve", _envelope, _state_server),
-    do: %{ok: false, error: "unknown_cmd"}
+    do: %{ok: false, error: "invalid_args"}
+
+  defp dispatch("review_reject", %{"args" => %{"taskId" => task_id} = args}, state_server)
+       when is_binary(task_id) do
+    reopens = Map.get(args, "reopens", [])
+    format_task_reply(StateServer.review_reject(state_server, task_id, reopens))
+  end
 
   defp dispatch("review_reject", _envelope, _state_server),
-    do: %{ok: false, error: "unknown_cmd"}
+    do: %{ok: false, error: "invalid_args"}
 
   defp dispatch("check_dod", %{"args" => %{"taskId" => task_id, "item" => item}}, state_server)
        when is_binary(task_id) and is_binary(item) do
