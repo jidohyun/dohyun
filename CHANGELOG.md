@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-04-20
+
+### Changed
+
+- **DaemonClient factory (`createDefaultDaemonClient`)** consolidates
+  the `DaemonClient` + `paths.daemonSock` construction that was
+  duplicated across `queue.ts`. Call sites only need to know the `cwd`
+  now; future delegate hooks plug into one factory instead of two
+  parallel constructors.
+- **Queue write paths delegate through the daemon** whenever a live
+  socket is present: `enqueueTask`, `dequeueTask`, and `completeTask`
+  all route through `delegateOrSpawn` before falling back to direct
+  file writes. No behavior change for daemon-off flows.
+- **E2E smoke for daemon on/off** (`tests/e2e/daemon-cycle.test.mjs`)
+  covers the no-daemon fallback, daemon-on round-trip, concurrent
+  enqueues, and mid-session daemon kill. Elixir-less environments
+  `describe.skip` automatically — CI without OTP still runs the
+  off-path suite.
+
 ## [0.14.2] - 2026-04-17
 
 ### Changed
