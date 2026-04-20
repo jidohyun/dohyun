@@ -134,6 +134,17 @@ defmodule DohyunDaemon.SocketServer do
   defp dispatch("review_pending", envelope, state_server),
     do: dispatch_task_mutation(envelope, &StateServer.transition_to_review_pending(state_server, &1))
 
+  # review_approve / review_reject: routes land here so the daemon's
+  # in-memory queue learns of the transition. Not yet implemented in the
+  # state server — fall through to unknown_cmd so the TS caller uses its
+  # file-direct fallback path. The state-server implementation is a
+  # follow-up task (see plan-2026-04-20-review-approve-daemon.md T3).
+  defp dispatch("review_approve", _envelope, _state_server),
+    do: %{ok: false, error: "unknown_cmd"}
+
+  defp dispatch("review_reject", _envelope, _state_server),
+    do: %{ok: false, error: "unknown_cmd"}
+
   defp dispatch("check_dod", %{"args" => %{"taskId" => task_id, "item" => item}}, state_server)
        when is_binary(task_id) and is_binary(item) do
     format_task_reply(StateServer.check_dod(state_server, task_id, item))

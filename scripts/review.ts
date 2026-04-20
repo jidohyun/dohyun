@@ -1,10 +1,10 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { readJson, writeJson } from '../src/utils/json.js'
+import { readJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
 import { appendLog, writeCurrentTask } from '../src/state/write.js'
 import type { QueueState } from '../src/runtime/contracts.js'
-import { approveTransition, rejectTransition } from '../src/runtime/review.js'
+import { approveTask, rejectTask } from '../src/runtime/review.js'
 
 export async function runReview(args: string[], cwd: string): Promise<void> {
   const [sub, id, ...rest] = args
@@ -72,11 +72,12 @@ async function runApprove(id: string | undefined, cwd: string): Promise<void> {
     process.exitCode = 1
     return
   }
-  const updated = approveTransition(task)
-  await writeJson(paths.queue(cwd), {
-    ...queue!,
-    tasks: queue!.tasks.map(t => t.id === resolvedId ? updated : t),
-  })
+  const updated = await approveTask(resolvedId, cwd)
+  if (!updated) {
+    console.error(`Approve failed: task ${resolvedId} is no longer review-pending.`)
+    process.exitCode = 1
+    return
+  }
   await appendLog('review-approved', `Approved "${task.title}" (${resolvedId})`, cwd)
   console.log(`Approved: "${task.title}"`)
 }
@@ -101,11 +102,12 @@ async function runReject(id: string | undefined, rest: string[], cwd: string): P
     process.exitCode = 1
     return
   }
-  const updated = rejectTransition(task, reopens)
-  await writeJson(paths.queue(cwd), {
-    ...queue!,
-    tasks: queue!.tasks.map(t => t.id === id ? updated : t),
-  })
+  const updated = await rejectTask(id, reopens, cwd)
+  if (!updated) {
+    console.error(`Reject failed: task ${id} is no longer review-pending.`)
+    process.exitCode = 1
+    return
+  }
   await writeCurrentTask({ version: 1, task: updated }, cwd)
   await appendLog('review-rejected', `Rejected "${task.title}" — reopened: ${reopens.join(', ')}`, cwd)
   console.log(`Rejected: "${task.title}"`)

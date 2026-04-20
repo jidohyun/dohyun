@@ -64,6 +64,7 @@ function startStatefulFakeDaemon(path, dir) {
 
   return new Promise((resolveListen) => {
     const server = createServer((socket) => {
+      socket.on('error', () => {}) // swallow EPIPE from client-side teardown
       let buf = ''
       socket.on('data', (chunk) => {
         buf += chunk.toString('utf8')
