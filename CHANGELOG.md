@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **daemon state_server now owns review transitions.** `dohyun review
+  approve` and `reject` used to write `queue.json` directly. When a daemon
+  was running, its in-memory snapshot — which still showed the task as
+  review-pending — would clobber the transition on the next mutation
+  (enqueue, `check_dod`, …) and the approve looked like it had silently
+  rolled back. Now the CLI sends `review_approve`/`review_reject` envelopes
+  through the socket; the state server flips the task, persists, and any
+  subsequent write starts from the correct snapshot. Elixir-less sessions
+  go through the same code path via a fallback that also stamps
+  `reviewedAt`.
+
 ## [0.14.3] - 2026-04-20
 
 ### Changed

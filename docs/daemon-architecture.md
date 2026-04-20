@@ -103,6 +103,19 @@ Tunable via `DOHYUN_DAEMON_IDLE_MS` (default: 600000 = 10 minutes). Set to
 * Shipping the binary to contributors who cannot install Erlang/OTP — the
   npm package does not include the daemon.
 
+## Review transitions
+
+`review approve` and `review reject` are state-server-owned just like every
+other mutation. This is load-bearing: if the CLI wrote the queue file
+directly while the daemon held a stale in-memory snapshot, the next mutation
+(enqueue, `check_dod`, …) would clobber the approve with the pre-approve
+state. Routing the transition through the state server keeps the daemon's
+memory in sync with disk. The wire envelope is
+`{cmd: "review_approve", args: {taskId, reviewedAt}}` or
+`{cmd: "review_reject", args: {taskId, reopens}}`; invalid arguments and
+non-review-pending tasks are rejected with `{ok: false, error: ...}` so the
+CLI can surface them.
+
 ## References
 
 * [daemon-wire-format.md](daemon-wire-format.md) — socket envelope contract.
