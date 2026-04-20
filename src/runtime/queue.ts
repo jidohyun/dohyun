@@ -12,6 +12,24 @@ function isTask(value: unknown): value is Task {
 }
 
 /**
+ * Parse a daemon reply envelope whose body is expected to be `{ task: Task | null }`.
+ *
+ * Returns:
+ *   - `undefined`  — no reply at all (daemon absent or delegated returned null).
+ *                    Caller should fall through to direct file I/O.
+ *   - `null`       — daemon explicitly signaled "no task" (e.g. empty queue).
+ *                    Caller should return null upstream without touching files.
+ *   - `Task`       — daemon handled the write and returned the updated task.
+ */
+function parseTaskReply(reply: unknown): Task | null | undefined {
+  if (!reply || typeof reply !== 'object' || !('task' in reply)) return undefined
+  const t = (reply as { task: unknown }).task
+  if (t === null) return null
+  if (isTask(t)) return t
+  return undefined
+}
+
+/**
  * Try to delegate a write to the daemon. On miss, fire-and-forget spawn a
  * background daemon so the NEXT CLI call gets a warm socket — the current
  * call still falls through to direct file I/O so the user sees no latency.
@@ -92,10 +110,8 @@ export async function enqueueTask(
     cmd: 'enqueue',
     args,
   }, cwd)
-  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
-    const t = (delegated as { task: unknown }).task
-    if (isTask(t)) return t
-  }
+  const parsed = parseTaskReply(delegated)
+  if (parsed) return parsed
 
   const queue = await loadQueue(cwd)
   const task = createTask({
@@ -123,11 +139,8 @@ export async function dequeueTask(cwd?: string): Promise<Task | null> {
   const delegated = await delegateOrSpawn({
     cmd: 'dequeue',
   }, cwd)
-  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
-    const t = (delegated as { task: unknown }).task
-    if (t === null) return null
-    if (isTask(t)) return t
-  }
+  const parsed = parseTaskReply(delegated)
+  if (parsed !== undefined) return parsed
 
   const queue = await loadQueue(cwd)
   const pending = queue.tasks.find(t => t.status === 'pending')
@@ -162,11 +175,8 @@ export async function completeTask(taskId: string, cwd?: string): Promise<Task |
     cmd: 'complete',
     args: { taskId },
   }, cwd)
-  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
-    const t = (delegated as { task: unknown }).task
-    if (t === null) return null
-    if (isTask(t)) return t
-  }
+  const parsed = parseTaskReply(delegated)
+  if (parsed !== undefined) return parsed
 
   const queue = await loadQueue(cwd)
   const task = queue.tasks.find(t => t.id === taskId)
@@ -192,11 +202,8 @@ export async function transitionToReviewPending(taskId: string, cwd?: string): P
     cmd: 'review_pending',
     args: { taskId },
   }, cwd)
-  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
-    const t = (delegated as { task: unknown }).task
-    if (t === null) return null
-    if (isTask(t)) return t
-  }
+  const parsed = parseTaskReply(delegated)
+  if (parsed !== undefined) return parsed
 
   const queue = await loadQueue(cwd)
   const task = queue.tasks.find(t => t.id === taskId)
@@ -273,11 +280,8 @@ export async function checkDodItem(
     cmd: 'check_dod',
     args: { taskId, item: dodItem },
   }, cwd)
-  if (delegated && typeof delegated === 'object' && 'task' in delegated) {
-    const t = (delegated as { task: unknown }).task
-    if (t === null) return null
-    if (isTask(t)) return t
-  }
+  const parsed = parseTaskReply(delegated)
+  if (parsed !== undefined) return parsed
 
   const queue = await loadQueue(cwd)
   const task = queue.tasks.find(t => t.id === taskId)
