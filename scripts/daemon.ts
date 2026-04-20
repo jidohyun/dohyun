@@ -1,5 +1,8 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, openSync, mkdirSync, rmSync, statSync } from 'node:fs'
+import {
+  existsSync, readFileSync, openSync, mkdirSync, rmSync, statSync,
+  writeFileSync,
+} from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { paths } from '../src/state/paths.js'
@@ -141,6 +144,59 @@ function mixOnPath(): boolean {
 export type AutoSpawnResult = 'disabled' | 'already-running' | 'spawned' | 'unavailable'
 
 /**
+ * Module-level guard: we emit the "starting background daemon" stderr
+ * notice at most once per Node process. Multiple CLI invocations that
+ * each call `autoSpawnBackground` would otherwise each print their own
+ * copy, which looks like a bug (and has been reported as cosmetic
+ * "duplicate auto-spawn message").
+ */
+let noticeEmittedThisProcess = false
+
+/**
+ * Cross-process guard: a short-lived lock file so that two CLI
+ * processes racing to spawn a daemon only print the notice once.
+ * TTL is deliberately tiny — we only want to swallow duplicates from
+ * the same burst, not future legitimate notices.
+ */
+const SPAWN_NOTICE_LOCK_TTL_MS = 1500
+
+function noticeLockPath(cwd: string): string {
+  return resolve(cwd, '.dohyun', 'runtime', 'spawn-notice.lock')
+}
+
+function shouldSuppressNotice(cwd: string): boolean {
+  if (noticeEmittedThisProcess) return true
+  const lockPath = noticeLockPath(cwd)
+  try {
+    const st = statSync(lockPath)
+    const age = Date.now() - st.mtimeMs
+    if (age < SPAWN_NOTICE_LOCK_TTL_MS) return true
+    // Stale — best-effort remove so future writers can take it.
+    try { rmSync(lockPath, { force: true }) } catch {}
+  } catch {
+    // ENOENT — no lock, not suppressed.
+  }
+  return false
+}
+
+function markNoticeEmitted(cwd: string): void {
+  noticeEmittedThisProcess = true
+  const lockPath = noticeLockPath(cwd)
+  try {
+    mkdirSync(dirname(lockPath), { recursive: true })
+    writeFileSync(lockPath, String(process.pid))
+  } catch {
+    // If we can't write the lock, the worst case is another duplicate
+    // notice — prefer noisy over silently dropping a legitimate one.
+  }
+}
+
+/** Test-only hook: reset module state between tests. */
+export function resetSpawnNoticeStateForTests(): void {
+  noticeEmittedThisProcess = false
+}
+
+/**
  * Fire-and-forget daemon spawn. Never waits for the socket to bind — the
  * calling CLI continues with its direct-file-write fallback immediately.
  * The next CLI invocation gets a warm daemon for free.
@@ -189,9 +245,10 @@ export function autoSpawnBackground(
     })
     child.unref()
 
-    if (process.env.DOHYUN_QUIET !== '1') {
+    if (process.env.DOHYUN_QUIET !== '1' && !shouldSuppressNotice(cwd)) {
       const mode = execution.kind === 'release' ? 'release' : 'mix'
       process.stderr.write(`[dohyun] starting background daemon (${mode})\n`)
+      markNoticeEmitted(cwd)
     }
   } catch {
     return 'unavailable'
