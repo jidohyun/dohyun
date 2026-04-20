@@ -24,6 +24,27 @@ All schemas defined in `src/runtime/schemas.ts`. Reads go through `readJsonValid
 - Check state before stopping
 - If a session crashes, state files enable recovery
 
+## Single Writer Principle
+
+queue.json 같은 상태 파일은 **한 순간에 한 명만** 쓴다. CLI와 daemon이 동시에 같은 파일을 덮어쓰면 서로의 write를 소실시켜 task가 누락된다 (실제로 2026-04-20 plan reload에서 첫 task drop으로 재현됨).
+
+규칙:
+
+1. **plan load는 single writer로 완결**한다 — daemon이 돌고 있으면 **하나의 envelope**로 daemon이 모든 변경을 수행, daemon이 없으면 CLI가 **auto-spawn 없이** 파일에 직접 쓴다. 둘 다 쓰는 중간 상태는 없다.
+2. 대량 쓰기(`cancel_all` + `prune_cancelled` + N×`enqueue`처럼 한 의도가 여러 명령으로 쪼개지는 경우)는 **묶어서 단일 쓰기**로 보낸다. 개별 호출마다 `delegateOrSpawn`을 타면 fire-and-forget spawn이 중간에 끼어들어 race를 만든다.
+3. 짧은 단일 쓰기(e.g. `enqueue` 하나)는 기존 `delegateOrSpawn` warm-daemon 전략을 유지한다 — race 없음, UX 이득 있음.
+
+### 왜 plan load 경로에서 auto-spawn을 제거했나
+
+Kent Beck의 3 warning signs 중 **Loops**에 해당하는 상태였다:
+
+- cancel → prune → enqueue를 각각 `delegateOrSpawn`으로 호출
+- 매 호출마다 daemon 미스를 탐지해 fire-and-forget spawn 시도
+- daemon이 중간에 올라와 자신의 부팅-시 스냅샷으로 파일을 덮어씀 → 첫 enqueue된 task가 사라짐
+- 재현하려고 `plan load`를 다시 하면 같은 race가 재발 → 사용자가 "이상한데?"를 반복
+
+해결은 **그 경로에서 race 창 자체를 없애는 것**이었다 — auto-spawn을 제거하고 single envelope / direct file-write 둘 중 하나로만 가면 중간 상태가 없다. 이것은 *Cheating*(테스트 skip, assertion 주석 처리) 없이 race를 구조적으로 제거한 예시다.
+
 ## Hook Rules
 
 Hooks must be **thin**:
