@@ -46,7 +46,11 @@ async function delegate(envelope: DaemonEnvelope, cwd?: string): Promise<unknown
  * state / does not exist.
  */
 export async function approveTask(taskId: string, cwd?: string): Promise<Task | null> {
-  const delegated = await delegate({ cmd: 'review_approve', args: { taskId } }, cwd)
+  const reviewedAt = now()
+  const delegated = await delegate(
+    { cmd: 'review_approve', args: { taskId, reviewedAt } },
+    cwd,
+  )
   const parsed = parseTaskReply(delegated)
   if (parsed !== undefined) return parsed
 
@@ -55,7 +59,13 @@ export async function approveTask(taskId: string, cwd?: string): Promise<Task | 
   const task = queue.tasks.find(t => t.id === taskId)
   if (!task || task.status !== 'review-pending') return null
 
-  const updated = approveTransition(task)
+  const updated: Task = {
+    ...task,
+    status: 'completed',
+    completedAt: reviewedAt,
+    reviewedAt,
+    updatedAt: reviewedAt,
+  }
   await writeJson(paths.queue(cwd), {
     ...queue,
     tasks: queue.tasks.map(t => t.id === taskId ? updated : t),
