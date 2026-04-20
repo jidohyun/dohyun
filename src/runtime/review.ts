@@ -11,7 +11,7 @@ import type { DaemonEnvelope } from './daemon-wire.js'
 /** Pure transition: review-pending → completed. */
 export function approveTransition(task: Task): Task {
   const ts = now()
-  return { ...task, status: 'completed', completedAt: ts, updatedAt: ts }
+  return { ...task, status: 'completed', completedAt: ts, reviewedAt: ts, updatedAt: ts }
 }
 
 function isTask(value: unknown): value is Task {

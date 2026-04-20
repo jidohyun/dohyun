@@ -66,6 +66,13 @@ export interface Task {
   updatedAt: string
   startedAt: string | null
   completedAt: string | null
+  /**
+   * ISO timestamp when the task exited review-pending via `dohyun review
+   * approve`. Null for tasks that never went through review (tidy/chore,
+   * or completed before this field existed). Optional for hysterical-raisin
+   * reasons — older queue.json files may not have it.
+   */
+  reviewedAt?: string | null
   metadata: Record<string, unknown>
 }
 
