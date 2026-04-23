@@ -1,0 +1,9 @@
+{
+  "id": "156201da-db03-45f9-b8b3-10fc5f998c7b",
+  "taskId": "54ad244d-d840-437c-9a41-50a8dcbb5567",
+  "dodText": "`docs/evidence-model.md` 신설 — 섹션: (a) Why out-of-band, (b) `@verify:manual` 라이프사이클, (c) CLI 사용법, (d) 0.19 deprecation 타임라인, (e) human-only 원칙",
+  "requestedAt": "2026-04-23T23:52:30.571Z",
+  "decision": "approved",
+  "decidedAt": "2026-04-23T23:52:46.137Z",
+  "decidedBy": "human"
+}

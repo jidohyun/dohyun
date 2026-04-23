@@ -62,6 +62,12 @@ dohyun note "Decided to use zod for validation"
 dohyun log --tail 20               # recent activity
 dohyun doctor                      # health check
 dohyun doctor --fix                # auto-repair missing state / hook drift
+
+# 7. Human-only approval queue (for @verify:manual under CLAUDECODE=1)
+dohyun approve list                # show unresolved out-of-band approvals
+dohyun approve <id>                # human signs off on a manual DoD
+dohyun approve reject <id> --reason "…"
+                                   # see docs/evidence-model.md
 ```
 
 ## Quick Start

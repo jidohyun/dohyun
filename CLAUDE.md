@@ -17,7 +17,7 @@ This project is a personal AI workflow harness built on Kent Beck's Augmented Co
 
 ## Rules for AI
 
-1. **Never skip DoD** — each task has Definition of Done items. Check them off one by one. AI attempts to set `DOHYUN_SKIP_VERIFY=1` are **refused at the runtime** (exitCode=1 + `ai-bypass-attempt` WARN + Stop hook re-injects remediation on the next turn). This env var is reserved for humans.
+1. **Never skip DoD** — each task has Definition of Done items. Check them off one by one. AI attempts to set `DOHYUN_SKIP_VERIFY=1` are **refused at the runtime** (exitCode=1 + `ai-bypass-attempt` WARN + Stop hook re-injects remediation on the next turn). This env var is reserved for humans. Under `CLAUDECODE=1`, `@verify:manual` DoD items route through the **out-of-band approval queue** (`.dohyun/pending-approvals/`) — only a human can resolve them via `dohyun approve`. Full model: [docs/evidence-model.md](docs/evidence-model.md).
 2. **One feature at a time** — complete current task before starting next.
 3. **Tidy after feature** — after 2 consecutive features (feature/fix), `dohyun task start` hard-blocks until a tidy task completes. No env escape. Recovery: `dohyun task start --tidy-ad-hoc "<title>"`.
 4. **Don't cheat** — never delete or skip tests to make problems disappear. Writing evidence lines to notepad.md to satisfy `@verify:manual` is also cheating.
