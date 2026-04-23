@@ -1,4 +1,4 @@
-import { dequeueTask, completeTask, isDodComplete, peekTask, transitionToReviewPending } from '../src/runtime/queue.js'
+import { dequeueTask, completeTask, isDodComplete, peekTask, transitionToReviewPending, enqueueTask, reorderPending } from '../src/runtime/queue.js'
 import { writeCurrentTask } from '../src/state/write.js'
 import { readCurrentTask } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
@@ -6,14 +6,52 @@ import { getBreathState, shouldBlockFeatureStart } from '../src/runtime/breath.j
 import { requiresReview, writeReviewRequest } from '../src/runtime/review.js'
 import { dohyunError } from '../src/utils/error.js'
 
+function extractFlag(args: string[], name: string): { value: string | null; rest: string[] } {
+  const idx = args.indexOf(name)
+  if (idx < 0) return { value: null, rest: args }
+  const value = args[idx + 1] ?? null
+  const rest = [...args.slice(0, idx), ...args.slice(idx + 2)]
+  return { value, rest }
+}
+
 export async function runTask(args: string[], cwd: string): Promise<void> {
   const subcommand = args[0]
 
   if (subcommand === 'start' || subcommand === 'next') {
+    const { value: adHocTitle, rest: restArgs } = extractFlag(args.slice(1), '--tidy-ad-hoc')
+    void restArgs // reserved for future flags
+
     const current = await readCurrentTask(cwd)
     if (current?.task && current.task.status === 'in_progress') {
       console.log(`Already in progress: "${current.task.title}"`)
       console.log('Run `dohyun dod` to see DoD status.')
+      return
+    }
+
+    // --tidy-ad-hoc short-circuits the breath gate by inserting a tidy
+    // task at the head of the pending segment and dequeuing it. Title
+    // required; DoD is intentionally empty so the operator fills it
+    // as the structural work reveals itself.
+    if (adHocTitle !== null) {
+      if (!adHocTitle.trim()) {
+        console.error('Usage: dohyun task start --tidy-ad-hoc "<title>"')
+        process.exitCode = 1
+        return
+      }
+      const created = await enqueueTask(
+        adHocTitle.trim(),
+        { type: 'tidy', dod: [] },
+        cwd,
+      )
+      await reorderPending(created.id, { mode: 'first' }, cwd)
+      const task = await dequeueTask(cwd)
+      if (!task) {
+        dohyunError('task/ad-hoc-dequeue', 'ad-hoc tidy task was not dequeued — queue state inconsistent.')
+        return
+      }
+      await writeCurrentTask({ version: 1, task }, cwd)
+      await appendLog('task-start', `Started ad-hoc "${task.title}" [tidy]`, cwd)
+      console.log(`Started task: "${task.title}" [tidy]`)
       return
     }
 

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -193,6 +193,43 @@ test('checkpoint output includes "breath: N feature(s) since last tidy" on appro
   const action = evaluateCheckpoint(featureTask, { pendingCount: 0 }, { featuresSinceTidy: 3 })
   const out = formatCheckpointForHook(action)
   assert.match(out.reason ?? '', /breath:\s*3 feature\(s\) since last tidy/i)
+})
+
+test('task start --tidy-ad-hoc "<title>": inserts a tidy task and dequeues it past breath', () => {
+  const dir = sandbox()
+  try {
+    const planPath = join(dir, '.dohyun', 'plans', 'p.md')
+    writeFileSync(planPath, [
+      '# P',
+      '',
+      '### T1: F1 (feature)',
+      '- [ ] a',
+      '',
+      '### T2: F2 (feature)',
+      '- [ ] b',
+      '',
+      '### T3: F3 (feature)',
+      '- [ ] c',
+      '',
+    ].join('\n'))
+    run(['plan', 'load', planPath], dir)
+
+    completeFeature(dir, 'a')
+    completeFeature(dir, 'b')
+
+    // Gate would normally block here. --tidy-ad-hoc creates a tidy task
+    // on the fly, puts it first in the pending segment, and dequeues it.
+    const out = run(['task', 'start', '--tidy-ad-hoc', 'cleanup-imports'], dir)
+    assert.match(out, /cleanup-imports/)
+    assert.match(out, /\[tidy\]/)
+
+    // The regular feature F3 is still in the queue, now behind the tidy.
+    const queue = JSON.parse(readFileSync(join(dir, '.dohyun', 'runtime', 'queue.json'), 'utf8'))
+    const tidy = queue.tasks.find(t => t.type === 'tidy' && t.title.includes('cleanup-imports'))
+    assert.ok(tidy, 'ad-hoc tidy task must be written to the queue')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('task start: DOHYUN_SKIP_BREATH is NOT honored — breath is strict for human too', () => {
