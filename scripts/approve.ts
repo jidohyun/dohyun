@@ -53,17 +53,26 @@ async function runList(cwd: string): Promise<void> {
   console.log('  dohyun approve reject <id> --reason "..."')
 }
 
-async function runApproveOne(id: string | undefined, cwd: string): Promise<void> {
-  if (!id) return usage()
+async function requirePending(id: string | undefined, cwd: string) {
+  if (!id) {
+    usage()
+    return null
+  }
   const existing = await readPending(id, cwd)
   if (!existing) {
     console.error(`pending-approval not found: ${id}`)
     process.exitCode = 1
-    return
+    return null
   }
-  await writeDecision(id, { decision: 'approved', decidedBy: 'human' }, cwd)
-  await appendLog('approval', `approved ${id} (task=${existing.taskId})`, cwd)
-  console.log(`Approved: ${id}`)
+  return existing
+}
+
+async function runApproveOne(id: string | undefined, cwd: string): Promise<void> {
+  const existing = await requirePending(id, cwd)
+  if (!existing) return
+  await writeDecision(existing.id, { decision: 'approved', decidedBy: 'human' }, cwd)
+  await appendLog('approval', `approved ${existing.id} (task=${existing.taskId})`, cwd)
+  console.log(`Approved: ${existing.id}`)
 }
 
 async function runReject(
@@ -71,24 +80,19 @@ async function runReject(
   rest: string[],
   cwd: string,
 ): Promise<void> {
-  if (!id) return usage()
-  const existing = await readPending(id, cwd)
-  if (!existing) {
-    console.error(`pending-approval not found: ${id}`)
-    process.exitCode = 1
-    return
-  }
+  const existing = await requirePending(id, cwd)
+  if (!existing) return
   const reasonIdx = rest.indexOf('--reason')
   const reason = reasonIdx >= 0 ? rest[reasonIdx + 1] : undefined
   await writeDecision(
-    id,
+    existing.id,
     { decision: 'rejected', decidedBy: 'human', ...(reason ? { context: reason } : {}) },
     cwd,
   )
   await appendLog(
     'approval',
-    `rejected ${id} (task=${existing.taskId})${reason ? `: ${reason}` : ''}`,
+    `rejected ${existing.id} (task=${existing.taskId})${reason ? `: ${reason}` : ''}`,
     cwd,
   )
-  console.log(`Rejected: ${id}`)
+  console.log(`Rejected: ${existing.id}`)
 }
