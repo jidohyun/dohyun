@@ -104,6 +104,26 @@ export const pendingApprovalSchema = z.object({
   decidedBy: z.string().optional(),
 })
 
+/**
+ * Collection schema — enforces that ids are globally unique across
+ * all pending-approval records. A duplicate id would let an AI silently
+ * shadow a real human decision.
+ */
+export const pendingApprovalsSchema = z.array(pendingApprovalSchema).superRefine((arr, ctx) => {
+  const seen = new Set<string>()
+  for (let i = 0; i < arr.length; i++) {
+    const id = arr[i].id
+    if (seen.has(id)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [i, 'id'],
+        message: `duplicate pending-approval id: ${id}`,
+      })
+    }
+    seen.add(id)
+  }
+})
+
 // ─── Type Guards (compile-time check: schema matches interface) ────
 
 type AssertEqual<T, U> = T extends U ? (U extends T ? true : never) : never

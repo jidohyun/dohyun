@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const mod = await import(resolve(here, '..', '..', 'dist', 'src', 'runtime', 'schemas.js'))
-const { pendingApprovalSchema } = mod
+const { pendingApprovalSchema, pendingApprovalsSchema } = mod
 
 const base = {
   id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
@@ -63,4 +63,20 @@ test('pendingApprovalSchema: invalid — wrong decision value', () => {
 test('pendingApprovalSchema: invalid — non-string id', () => {
   const input = { ...base, id: 12345 }
   assert.throws(() => pendingApprovalSchema.parse(input))
+})
+
+test('pendingApprovalsSchema: invalid — duplicate id across records', () => {
+  const a = { ...base }
+  const b = { ...base, taskId: 'task-xyz' } // same id, different taskId
+  assert.throws(
+    () => pendingApprovalsSchema.parse([a, b]),
+    /duplicate.*pending-approval id/i,
+  )
+})
+
+test('pendingApprovalsSchema: valid — distinct ids', () => {
+  const a = { ...base }
+  const b = { ...base, id: '01ARZ3NDEKTSV4RRFFQ69G5FAW', taskId: 'task-xyz' }
+  const parsed = pendingApprovalsSchema.parse([a, b])
+  assert.equal(parsed.length, 2)
 })
