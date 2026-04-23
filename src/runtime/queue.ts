@@ -3,78 +3,12 @@ import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now, uuid } from '../utils/time.js'
 import { createDefaultDaemonClient } from './daemon-factory.js'
-import type { DaemonEnvelope } from './daemon-wire.js'
-
-function isTask(value: unknown): value is Task {
-  if (!value || typeof value !== 'object') return false
-  const v = value as Record<string, unknown>
-  return typeof v.id === 'string' && typeof v.title === 'string' && Array.isArray(v.dod)
-}
-
-/**
- * Parse a daemon reply envelope whose body is expected to be `{ task: Task | null }`.
- *
- * Returns:
- *   - `undefined`  — no reply at all (daemon absent or delegated returned null).
- *                    Caller should fall through to direct file I/O.
- *   - `null`       — daemon explicitly signaled "no task" (e.g. empty queue).
- *                    Caller should return null upstream without touching files.
- *   - `Task`       — daemon handled the write and returned the updated task.
- */
-function parseTaskReply(reply: unknown): Task | null | undefined {
-  if (!reply || typeof reply !== 'object' || !('task' in reply)) return undefined
-  const t = (reply as { task: unknown }).task
-  if (t === null) return null
-  if (isTask(t)) return t
-  return undefined
-}
-
-/**
- * Try to delegate a write to the daemon. On miss, fire-and-forget spawn a
- * background daemon so the NEXT CLI call gets a warm socket — the current
- * call still falls through to direct file I/O so the user sees no latency.
- *
- * Auto-spawn is suppressed in two cases we care about:
- *   - DOHYUN_NO_DAEMON=1 is set (CI opt-out)
- *   - the daemon returned ok:false to this call (a version mismatch or
- *     genuine error — spawning a new copy would not help)
- */
-async function delegateOrSpawn(envelope: DaemonEnvelope, cwd?: string): Promise<unknown | null> {
-  const client = createDefaultDaemonClient(cwd)
-  const result = await client.tryDelegate(envelope)
-  if (!client.usedFallback) return result
-
-  // Only try to spawn when the miss looked like "no daemon here yet".
-  // We can't distinguish perfectly; safest heuristic is to call the helper
-  // which itself checks socket + pid + env opt-out.
-  try {
-    const { autoSpawnBackground } = await import('../../scripts/daemon.js')
-    autoSpawnBackground(cwd ?? process.cwd())
-  } catch {
-    // scripts/daemon.js missing in some test bundles — silent no-op
-  }
-  return null
-}
-
-/**
- * Try the daemon, but do NOT fire-and-forget spawn on miss. Returns the
- * daemon reply (or null if the daemon declined / absent). This is the
- * right primitive for "bulk state replacement" callers like plan load,
- * where interleaving an auto-spawn with direct file I/O introduces a race:
- *
- *   - CLI writes queue.json directly (cancel/prune/enqueue split)
- *   - background daemon boots mid-sequence, loads a stale snapshot,
- *     then overwrites the file on its next accepted command,
- *     dropping whatever the CLI just wrote.
- *
- * Use `delegateOrSpawn` for small individual writes where warming the
- * daemon is a UX win; use `delegateNoSpawn` for sequences that must be
- * atomic with respect to the file.
- */
-async function delegateNoSpawn(envelope: DaemonEnvelope, cwd?: string): Promise<unknown | null> {
-  const client = createDefaultDaemonClient(cwd)
-  return await client.tryDelegate(envelope)
-}
+import {
+  viaDaemon,
+  parseTaskReply,
+  parseCountReply,
+  parseTasksReply,
+} from './daemon-delegate.js'
 
 /**
  * Stable signature for task equality when comparing a plan re-load
@@ -104,6 +38,14 @@ async function loadQueue(cwd?: string): Promise<QueueState> {
     ?? { version: 1, tasks: [] }
 }
 
+async function writeQueueWith(
+  cwd: string | undefined,
+  queue: QueueState,
+  mutate: (tasks: readonly Task[]) => readonly Task[],
+): Promise<void> {
+  await writeJson(paths.queue(cwd), { ...queue, tasks: [...mutate(queue.tasks)] })
+}
+
 export async function enqueueTask(
   title: string,
   options: {
@@ -126,59 +68,55 @@ export async function enqueueTask(
     metadata: options.metadata ?? {},
   }
 
-  const delegated = await delegateOrSpawn({
-    cmd: 'enqueue',
-    args,
-  }, cwd)
-  const parsed = parseTaskReply(delegated)
-  if (parsed) return parsed
-
-  const queue = await loadQueue(cwd)
-  const task = createTask({
-    title,
-    description: args.description,
-    status: args.status,
-    priority: args.priority,
-    type: args.type,
-    dod: args.dod,
-    dodChecked: [],
-    startedAt: null,
-    completedAt: null,
-    metadata: args.metadata,
-  })
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: [...queue.tasks, task],
-  })
-
-  return task
+  return viaDaemon<Task>(
+    { cmd: 'enqueue', args },
+    (reply) => {
+      const parsed = parseTaskReply(reply)
+      return parsed === null ? undefined : parsed
+    },
+    async () => {
+      const queue = await loadQueue(cwd)
+      const task = createTask({
+        title,
+        description: args.description,
+        status: args.status,
+        priority: args.priority,
+        type: args.type,
+        dod: args.dod,
+        dodChecked: [],
+        startedAt: null,
+        completedAt: null,
+        metadata: args.metadata,
+      })
+      await writeQueueWith(cwd, queue, (tasks) => [...tasks, task])
+      return task
+    },
+    { cwd, spawn: true },
+  )
 }
 
 export async function dequeueTask(cwd?: string): Promise<Task | null> {
-  const delegated = await delegateOrSpawn({
-    cmd: 'dequeue',
-  }, cwd)
-  const parsed = parseTaskReply(delegated)
-  if (parsed !== undefined) return parsed
+  return viaDaemon<Task | null>(
+    { cmd: 'dequeue' },
+    parseTaskReply,
+    async () => {
+      const queue = await loadQueue(cwd)
+      const pending = queue.tasks.find(t => t.status === 'pending')
+      if (!pending) return null
 
-  const queue = await loadQueue(cwd)
-  const pending = queue.tasks.find(t => t.status === 'pending')
-  if (!pending) return null
-
-  const updated: Task = {
-    ...pending,
-    status: 'in_progress',
-    startedAt: now(),
-    updatedAt: now(),
-  }
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.map(t => t.id === updated.id ? updated : t),
-  })
-
-  return updated
+      const updated: Task = {
+        ...pending,
+        status: 'in_progress',
+        startedAt: now(),
+        updatedAt: now(),
+      }
+      await writeQueueWith(cwd, queue, (tasks) =>
+        tasks.map(t => t.id === updated.id ? updated : t),
+      )
+      return updated
+    },
+    { cwd, spawn: true },
+  )
 }
 
 export async function peekTask(cwd?: string): Promise<Task | null> {
@@ -191,104 +129,90 @@ export async function getQueue(cwd?: string): Promise<QueueState> {
 }
 
 export async function completeTask(taskId: string, cwd?: string): Promise<Task | null> {
-  const delegated = await delegateOrSpawn({
-    cmd: 'complete',
-    args: { taskId },
-  }, cwd)
-  const parsed = parseTaskReply(delegated)
-  if (parsed !== undefined) return parsed
+  return viaDaemon<Task | null>(
+    { cmd: 'complete', args: { taskId } },
+    parseTaskReply,
+    async () => {
+      const queue = await loadQueue(cwd)
+      const task = queue.tasks.find(t => t.id === taskId)
+      if (!task) return null
 
-  const queue = await loadQueue(cwd)
-  const task = queue.tasks.find(t => t.id === taskId)
-  if (!task) return null
-
-  const updated: Task = {
-    ...task,
-    status: 'completed',
-    completedAt: now(),
-    updatedAt: now(),
-  }
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.map(t => t.id === updated.id ? updated : t),
-  })
-
-  return updated
+      const updated: Task = {
+        ...task,
+        status: 'completed',
+        completedAt: now(),
+        updatedAt: now(),
+      }
+      await writeQueueWith(cwd, queue, (tasks) =>
+        tasks.map(t => t.id === updated.id ? updated : t),
+      )
+      return updated
+    },
+    { cwd, spawn: true },
+  )
 }
 
 export async function transitionToReviewPending(taskId: string, cwd?: string): Promise<Task | null> {
-  const delegated = await delegateOrSpawn({
-    cmd: 'review_pending',
-    args: { taskId },
-  }, cwd)
-  const parsed = parseTaskReply(delegated)
-  if (parsed !== undefined) return parsed
+  return viaDaemon<Task | null>(
+    { cmd: 'review_pending', args: { taskId } },
+    parseTaskReply,
+    async () => {
+      const queue = await loadQueue(cwd)
+      const task = queue.tasks.find(t => t.id === taskId)
+      if (!task) return null
 
-  const queue = await loadQueue(cwd)
-  const task = queue.tasks.find(t => t.id === taskId)
-  if (!task) return null
-
-  const updated: Task = {
-    ...task,
-    status: 'review-pending',
-    updatedAt: now(),
-  }
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.map(t => t.id === updated.id ? updated : t),
-  })
-
-  return updated
-}
-
-function isCount(value: unknown): value is { count: number } {
-  return !!value && typeof value === 'object' && 'count' in value
-    && typeof (value as { count: unknown }).count === 'number'
+      const updated: Task = {
+        ...task,
+        status: 'review-pending',
+        updatedAt: now(),
+      }
+      await writeQueueWith(cwd, queue, (tasks) =>
+        tasks.map(t => t.id === updated.id ? updated : t),
+      )
+      return updated
+    },
+    { cwd, spawn: true },
+  )
 }
 
 export async function pruneCancelledTasks(cwd?: string): Promise<number> {
-  const delegated = await delegateOrSpawn({
-    cmd: 'prune_cancelled',
-  }, cwd)
-  if (isCount(delegated)) return delegated.count
-
-  const queue = await loadQueue(cwd)
-  const removed = queue.tasks.filter(t => t.status === 'cancelled')
-  if (removed.length === 0) return 0
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.filter(t => t.status !== 'cancelled'),
-  })
-
-  return removed.length
+  return viaDaemon<number>(
+    { cmd: 'prune_cancelled' },
+    parseCountReply,
+    async () => {
+      const queue = await loadQueue(cwd)
+      const removed = queue.tasks.filter(t => t.status === 'cancelled')
+      if (removed.length === 0) return 0
+      await writeQueueWith(cwd, queue, (tasks) =>
+        tasks.filter(t => t.status !== 'cancelled'),
+      )
+      return removed.length
+    },
+    { cwd, spawn: true },
+  )
 }
 
 export async function cancelAllTasks(cwd?: string): Promise<number> {
-  const delegated = await delegateOrSpawn({
-    cmd: 'cancel_all',
-  }, cwd)
-  if (isCount(delegated)) return delegated.count
-
-  const queue = await loadQueue(cwd)
-  const active = queue.tasks.filter(t =>
-    t.status === 'pending' || t.status === 'in_progress'
+  return viaDaemon<number>(
+    { cmd: 'cancel_all' },
+    parseCountReply,
+    async () => {
+      const queue = await loadQueue(cwd)
+      const active = queue.tasks.filter(t =>
+        t.status === 'pending' || t.status === 'in_progress'
+      )
+      if (active.length === 0) return 0
+      await writeQueueWith(cwd, queue, (tasks) =>
+        tasks.map(t =>
+          t.status === 'pending' || t.status === 'in_progress'
+            ? { ...t, status: 'cancelled' as const, updatedAt: now() }
+            : t
+        ),
+      )
+      return active.length
+    },
+    { cwd, spawn: true },
   )
-
-  if (active.length === 0) return 0
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.map(t =>
-      t.status === 'pending' || t.status === 'in_progress'
-        ? { ...t, status: 'cancelled' as const, updatedAt: now() }
-        : t
-    ),
-  })
-
-  return active.length
 }
 
 /**
@@ -318,45 +242,42 @@ export async function replacePendingTasks(
   tasks: readonly PlanTask[],
   cwd?: string,
 ): Promise<readonly Task[]> {
-  const delegated = await delegateNoSpawn({
-    cmd: 'replace_pending',
-    args: { tasks: tasks.map(t => ({
-      title: t.title,
-      type: t.type,
-      dod: t.dod,
-      metadata: t.metadata ?? {},
-    })) },
-  }, cwd)
-
-  if (delegated && typeof delegated === 'object' && 'tasks' in delegated) {
-    const reply = (delegated as { tasks: unknown }).tasks
-    if (Array.isArray(reply) && reply.every(isTask)) return reply as Task[]
-  }
-
-  // Direct file fallback — no spawn.
-  const queue = await loadQueue(cwd)
-  const kept = queue.tasks.filter(
-    t => t.status === 'completed' || t.status === 'review-pending',
+  return viaDaemon<readonly Task[]>(
+    {
+      cmd: 'replace_pending',
+      args: { tasks: tasks.map(t => ({
+        title: t.title,
+        type: t.type,
+        dod: t.dod,
+        metadata: t.metadata ?? {},
+      })) },
+    },
+    parseTasksReply,
+    async () => {
+      const queue = await loadQueue(cwd)
+      const kept = queue.tasks.filter(
+        t => t.status === 'completed' || t.status === 'review-pending',
+      )
+      const created: Task[] = tasks.map(t => createTask({
+        title: t.title,
+        description: null,
+        status: 'pending',
+        priority: 'normal',
+        type: t.type,
+        dod: t.dod,
+        dodChecked: [],
+        startedAt: null,
+        completedAt: null,
+        metadata: t.metadata ?? {},
+      }))
+      await writeJson(paths.queue(cwd), {
+        ...queue,
+        tasks: [...kept, ...created],
+      })
+      return created
+    },
+    { cwd, spawn: false },
   )
-  const created: Task[] = tasks.map(t => createTask({
-    title: t.title,
-    description: null,
-    status: 'pending',
-    priority: 'normal',
-    type: t.type,
-    dod: t.dod,
-    dodChecked: [],
-    startedAt: null,
-    completedAt: null,
-    metadata: t.metadata ?? {},
-  }))
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: [...kept, ...created],
-  })
-
-  return created
 }
 
 export async function checkDodItem(
@@ -364,30 +285,27 @@ export async function checkDodItem(
   dodItem: string,
   cwd?: string
 ): Promise<Task | null> {
-  const delegated = await delegateOrSpawn({
-    cmd: 'check_dod',
-    args: { taskId, item: dodItem },
-  }, cwd)
-  const parsed = parseTaskReply(delegated)
-  if (parsed !== undefined) return parsed
+  return viaDaemon<Task | null>(
+    { cmd: 'check_dod', args: { taskId, item: dodItem } },
+    parseTaskReply,
+    async () => {
+      const queue = await loadQueue(cwd)
+      const task = queue.tasks.find(t => t.id === taskId)
+      if (!task) return null
+      if (task.dodChecked.includes(dodItem)) return task
 
-  const queue = await loadQueue(cwd)
-  const task = queue.tasks.find(t => t.id === taskId)
-  if (!task) return null
-  if (task.dodChecked.includes(dodItem)) return task
-
-  const updated: Task = {
-    ...task,
-    dodChecked: [...task.dodChecked, dodItem],
-    updatedAt: now(),
-  }
-
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.map(t => t.id === updated.id ? updated : t),
-  })
-
-  return updated
+      const updated: Task = {
+        ...task,
+        dodChecked: [...task.dodChecked, dodItem],
+        updatedAt: now(),
+      }
+      await writeQueueWith(cwd, queue, (tasks) =>
+        tasks.map(t => t.id === updated.id ? updated : t),
+      )
+      return updated
+    },
+    { cwd, spawn: true },
+  )
 }
 
 export function isDodComplete(task: Task): boolean {
@@ -427,6 +345,11 @@ function reorderErrorMessage(code: string, taskId: string, target: ReorderTarget
  *   - task id not found
  *   - task is not currently pending
  *   - target id (for --before) is not a pending task
+ *
+ * This one keeps its own daemon-first branch because it needs to surface
+ * the daemon's structured error codes (task_not_found, target_not_pending,
+ * ...) as user-facing Error messages. viaDaemon's contract doesn't carry
+ * reply.error through, so we use the raw client here.
  */
 export async function reorderPending(
   taskId: string,

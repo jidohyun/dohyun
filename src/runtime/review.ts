@@ -5,32 +5,12 @@ import { paths } from '../state/paths.js'
 import { readJson, writeJson } from '../utils/json.js'
 import { now } from '../utils/time.js'
 import type { Task, QueueState } from './contracts.js'
-import { createDefaultDaemonClient } from './daemon-factory.js'
-import type { DaemonEnvelope } from './daemon-wire.js'
+import { viaDaemon, parseTaskReply } from './daemon-delegate.js'
 
 /** Pure transition: review-pending → completed. */
 export function approveTransition(task: Task): Task {
   const ts = now()
   return { ...task, status: 'completed', completedAt: ts, reviewedAt: ts, updatedAt: ts }
-}
-
-function isTask(value: unknown): value is Task {
-  if (!value || typeof value !== 'object') return false
-  const v = value as Record<string, unknown>
-  return typeof v.id === 'string' && typeof v.title === 'string' && Array.isArray(v.dod)
-}
-
-function parseTaskReply(reply: unknown): Task | null | undefined {
-  if (!reply || typeof reply !== 'object' || !('task' in reply)) return undefined
-  const t = (reply as { task: unknown }).task
-  if (t === null) return null
-  if (isTask(t)) return t
-  return undefined
-}
-
-async function delegate(envelope: DaemonEnvelope, cwd?: string): Promise<unknown | null> {
-  const client = createDefaultDaemonClient(cwd)
-  return client.tryDelegate(envelope)
 }
 
 /**
@@ -47,30 +27,30 @@ async function delegate(envelope: DaemonEnvelope, cwd?: string): Promise<unknown
  */
 export async function approveTask(taskId: string, cwd?: string): Promise<Task | null> {
   const reviewedAt = now()
-  const delegated = await delegate(
+  return viaDaemon<Task | null>(
     { cmd: 'review_approve', args: { taskId, reviewedAt } },
-    cwd,
+    parseTaskReply,
+    async () => {
+      const queue = await readJson<QueueState>(paths.queue(cwd))
+      if (!queue) return null
+      const task = queue.tasks.find(t => t.id === taskId)
+      if (!task || task.status !== 'review-pending') return null
+
+      const updated: Task = {
+        ...task,
+        status: 'completed',
+        completedAt: reviewedAt,
+        reviewedAt,
+        updatedAt: reviewedAt,
+      }
+      await writeJson(paths.queue(cwd), {
+        ...queue,
+        tasks: queue.tasks.map(t => t.id === taskId ? updated : t),
+      })
+      return updated
+    },
+    { cwd },
   )
-  const parsed = parseTaskReply(delegated)
-  if (parsed !== undefined) return parsed
-
-  const queue = await readJson<QueueState>(paths.queue(cwd))
-  if (!queue) return null
-  const task = queue.tasks.find(t => t.id === taskId)
-  if (!task || task.status !== 'review-pending') return null
-
-  const updated: Task = {
-    ...task,
-    status: 'completed',
-    completedAt: reviewedAt,
-    reviewedAt,
-    updatedAt: reviewedAt,
-  }
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.map(t => t.id === taskId ? updated : t),
-  })
-  return updated
 }
 
 /**
@@ -83,24 +63,24 @@ export async function rejectTask(
   reopens: readonly string[],
   cwd?: string,
 ): Promise<Task | null> {
-  const delegated = await delegate(
+  return viaDaemon<Task | null>(
     { cmd: 'review_reject', args: { taskId, reopens: [...reopens] } },
-    cwd,
+    parseTaskReply,
+    async () => {
+      const queue = await readJson<QueueState>(paths.queue(cwd))
+      if (!queue) return null
+      const task = queue.tasks.find(t => t.id === taskId)
+      if (!task || task.status !== 'review-pending') return null
+
+      const updated = rejectTransition(task, reopens)
+      await writeJson(paths.queue(cwd), {
+        ...queue,
+        tasks: queue.tasks.map(t => t.id === taskId ? updated : t),
+      })
+      return updated
+    },
+    { cwd },
   )
-  const parsed = parseTaskReply(delegated)
-  if (parsed !== undefined) return parsed
-
-  const queue = await readJson<QueueState>(paths.queue(cwd))
-  if (!queue) return null
-  const task = queue.tasks.find(t => t.id === taskId)
-  if (!task || task.status !== 'review-pending') return null
-
-  const updated = rejectTransition(task, reopens)
-  await writeJson(paths.queue(cwd), {
-    ...queue,
-    tasks: queue.tasks.map(t => t.id === taskId ? updated : t),
-  })
-  return updated
 }
 
 /** Pure transition: review-pending → in_progress with the named DoD items un-checked. */
