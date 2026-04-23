@@ -161,3 +161,33 @@ test('detectCheat: null when content has no cheat pattern', () => {
   const warn = detectCheat('tests/foo.test.mjs', 'test("legit", () => assert.ok(true))', false)
   assert.equal(warn, null)
 })
+
+// --- regression: detectAiBypass does not break the three original signals ---
+
+test('regression: detectLoop still flags repeated edits after detectAiBypass was added', async () => {
+  const cwd = sandbox()
+  try {
+    writeLog(cwd, [
+      '## [2026-04-23 10:00:00] write | edited src/x.ts',
+      '## [2026-04-23 10:01:00] edit  | edited src/x.ts',
+      '## [2026-04-23 10:02:00] write | edited src/x.ts',
+    ])
+    const warn = await detectLoop('src/x.ts', cwd)
+    assert.ok(warn)
+    assert.equal(warn.signal, 'loop')
+  } finally {
+    rmSync(cwd, { recursive: true, force: true })
+  }
+})
+
+test('regression: detectScopeCreep still fires when file outside task list', () => {
+  const warn = detectScopeCreep('src/unrelated.ts', ['src/foo.ts'])
+  assert.ok(warn)
+  assert.equal(warn.signal, 'scope_creep')
+})
+
+test('regression: detectCheat still blocks test.skip insertions', () => {
+  const warn = detectCheat('tests/foo.test.mjs', 'test.skip("x", () => {})', false)
+  assert.ok(warn)
+  assert.equal(warn.signal, 'cheat')
+})

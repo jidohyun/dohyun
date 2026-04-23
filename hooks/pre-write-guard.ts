@@ -10,7 +10,7 @@
  * Thin hook — delegates to guard module for signal detection.
  */
 
-import { detectLoop, detectScopeCreep, detectCheat } from '../src/runtime/guard.js'
+import { detectLoop, detectScopeCreep, detectCheat, detectAiBypass } from '../src/runtime/guard.js'
 import { readJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
 import { appendLog } from '../src/state/write.js'
@@ -84,6 +84,15 @@ async function main() {
     if (pattern.test(filePath)) {
       console.warn(`[dohyun] WARNING: Writing to "${filePath}" — are you sure?`)
     }
+  }
+
+  // Layer 1b: AI bypass — human-only directories
+  const bypassWarning = detectAiBypass(filePath)
+  if (bypassWarning) {
+    await appendLog('guard', bypassWarning.message, cwd)
+    console.error(`[dohyun] ${bypassWarning.message}`)
+    process.exitCode = 1
+    return
   }
 
   // Layer 2: Augmented Coding guard signals

@@ -10,9 +10,29 @@ import { readText } from '../utils/fs.js'
 import { paths } from '../state/paths.js'
 
 export interface GuardWarning {
-  signal: 'loop' | 'scope_creep' | 'cheat'
+  signal: 'loop' | 'scope_creep' | 'cheat' | 'ai-bypass-attempt'
   severity: 'warning' | 'block'
   message: string
+}
+
+/**
+ * Detect AI bypass attempt: any write into .dohyun/pending-approvals/.
+ *
+ * That directory is human-only — decision files there authorise out-of-band
+ * approval of @verify:manual DoDs under CLAUDECODE=1. If the AI writes to
+ * it, it is forging a human signature. Block on sight.
+ *
+ * The match targets the directory segment exactly so sibling directories
+ * like `pending-approvals-archive/` and consumer source files like
+ * `src/runtime/pending-approvals.ts` are not false-positives.
+ */
+export function detectAiBypass(filePath: string): GuardWarning | null {
+  if (!/(^|\/)\.dohyun\/pending-approvals\//.test(filePath)) return null
+  return {
+    signal: 'ai-bypass-attempt',
+    severity: 'block',
+    message: `BLOCKED: "${filePath}" targets the out-of-band human approval queue. Only a human can write here via the dohyun approve CLI.`,
+  }
 }
 
 /**
