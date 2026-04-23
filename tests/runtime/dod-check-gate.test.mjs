@@ -91,19 +91,45 @@ test('dod check: allows when verify tag passes (file-exists)', () => {
   }
 })
 
-test('dod check: DOHYUN_SKIP_VERIFY=1 bypasses the gate and logs WARN', () => {
+test('dod check: DOHYUN_SKIP_VERIFY=1 bypasses the gate and logs WARN (human)', () => {
   const dir = sandbox()
   try {
     loadPlan(dir, '# P\n\n### T1: Tagged (feature)\n- [ ] need file @verify:file-exists(ghost.txt)\n')
     const out = run(
       ['dod', 'check', 'need file @verify:file-exists(ghost.txt)'],
       dir,
-      { DOHYUN_SKIP_VERIFY: '1' },
+      // Human path: SKIP_VERIFY allowed when CLAUDECODE is not set.
+      { DOHYUN_SKIP_VERIFY: '1', CLAUDECODE: '' },
     )
     assert.match(out, /Checked:/)
 
     const log = readFileSync(join(dir, '.dohyun', 'logs', 'log.md'), 'utf8')
     assert.match(log, /verify bypassed/i)
+    assert.match(log, /WARN/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('dod check: AI cannot bypass — CLAUDECODE=1 + SKIP_VERIFY blocks with exitCode=1', () => {
+  const dir = sandbox()
+  try {
+    loadPlan(dir, '# P\n\n### T1: Tagged (feature)\n- [ ] need file @verify:file-exists(ghost.txt)\n')
+    const r = runExpectFail(
+      ['dod', 'check', 'need file @verify:file-exists(ghost.txt)'],
+      dir,
+      { DOHYUN_SKIP_VERIFY: '1', CLAUDECODE: '1' },
+    )
+    assert.equal(r.failed, true, 'AI bypass must exit non-zero')
+    assert.match(r.stderr, /ai.*bypass|cannot bypass/i)
+
+    // Task remains unchecked — bypass was refused.
+    const current = JSON.parse(readFileSync(join(dir, '.dohyun', 'runtime', 'current-task.json'), 'utf8'))
+    assert.equal(current.task.dodChecked.length, 0)
+
+    // Log records the attempt with a distinct tag so Stop hook can detect it.
+    const log = readFileSync(join(dir, '.dohyun', 'logs', 'log.md'), 'utf8')
+    assert.match(log, /ai-bypass-attempt/)
     assert.match(log, /WARN/)
   } finally {
     rmSync(dir, { recursive: true, force: true })

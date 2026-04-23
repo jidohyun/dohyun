@@ -2,7 +2,12 @@ import { readCurrentTask, readQueue } from '../src/state/read.js'
 import { checkDodItem } from '../src/runtime/queue.js'
 import { writeCurrentTask, appendLog } from '../src/state/write.js'
 import { parseVerifyTag, runVerify } from '../src/runtime/verify.js'
-import { isBypassed, logBypass } from '../src/runtime/escape.js'
+import {
+  isBypassed,
+  isAiBypassAttempt,
+  logBypass,
+  logAiBypassAttempt,
+} from '../src/runtime/escape.js'
 
 export async function runDod(cwd: string, args: string[] = []): Promise<void> {
   const subcommand = args[0]
@@ -35,6 +40,18 @@ export async function runDod(cwd: string, args: string[] = []): Promise<void> {
 
     const rule = parseVerifyTag(item)
     if (rule) {
+      if (isAiBypassAttempt('DOHYUN_SKIP_VERIFY')) {
+        // AI tried to set the human-only bypass env. Refuse the bypass,
+        // log with the ai-bypass-attempt tag so the Stop hook can
+        // re-inject a remediation prompt, and exit non-zero.
+        await logAiBypassAttempt('DOHYUN_SKIP_VERIFY', `for "${item}"`, cwd)
+        console.error('AI cannot bypass verify. Options:')
+        console.error('  (1) write a real test / make the DoD pass honestly')
+        console.error('  (2) add @verify:grep / @verify:file-exists / @verify:test tag to make this DoD deterministic')
+        console.error('  (3) stop and ask the human to run with DOHYUN_SKIP_VERIFY=1')
+        process.exitCode = 1
+        return
+      }
       if (isBypassed('DOHYUN_SKIP_VERIFY')) {
         await logBypass('DOHYUN_SKIP_VERIFY', `for "${item}"`, cwd)
       } else {
