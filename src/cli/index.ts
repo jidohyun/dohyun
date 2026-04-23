@@ -105,6 +105,11 @@ async function main() {
       await runMetrics(args, workDir)
       break
     }
+    case 'analyze-cheat': {
+      const { runAnalyzeCheatHistory } = await import('../../scripts/analyze-cheat-history.js')
+      await runAnalyzeCheatHistory(args, workDir)
+      break
+    }
     case 'daemon': {
       const { runDaemon } = await import('../../scripts/daemon.js')
       const [sub, ...rest] = args
