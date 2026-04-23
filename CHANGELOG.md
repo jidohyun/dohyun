@@ -7,18 +7,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-04-23
+
+This release turns the core "philosophy" documents into runtime
+enforcement: AI callers can no longer bypass the DoD verify gate with
+an env var, the breathing rhythm is a strict code gate for everyone,
+terminal-state tasks survive plan reload as audit history, and the
+Elixir daemon gained parity for plan reload. Zod/type drift that was
+silently dropping `reviewedAt` on every write is now a compile-time
+guard.
+
+### Added
+
+- **AI-aware bypass refusal.** `scripts/dod.ts` now refuses
+  `DOHYUN_SKIP_VERIFY=1` when `CLAUDECODE=1` is set (Claude Code always
+  sets it). Refusal writes an `ai-bypass-attempt` WARN to
+  `.dohyun/logs/log.md`, prints a three-option remediation to stderr,
+  and exits non-zero. Humans on a shell are unaffected — the human
+  bypass path still works and is logged with the existing
+  `verify-bypassed` tag.
+- **Stop hook remediation re-injection.** `src/runtime/ai-signals.ts`
+  (new) scans `log.md` for `ai-bypass-attempt` lines inside a 10-min
+  window. `evaluateCheckpoint` takes the signals through a new fourth
+  argument and prepends an `AI_BYPASS_BANNER` to the `continue` reason
+  so the next Claude turn sees why the last one was refused.
+- **`dohyun task start --tidy-ad-hoc "<title>"`.** Canonical recovery
+  path for the strict breath gate: enqueues a tidy task with empty DoD,
+  reorders it to the head of the pending segment, and dequeues it.
+  The breath counter resets when the ad-hoc tidy completes.
+- **`TaskSchema.reviewedAt`.** Optional `string | null`. Paired with a
+  compile-time `AssertEqual<z.infer<typeof TaskSchema>, Task>` guard so
+  future Task drift breaks `tsc` instead of silently stripping fields.
+- **Daemon `replace_pending` handler** (`StateServer.replace_pending/2`
+  + `SocketServer` dispatch). CLI plan reload with a live daemon now
+  goes through a single GenServer call instead of a CLI-writes-while-
+  daemon-holds-stale-snapshot race. Drops pending/in_progress rows,
+  preserves completed / review-pending / cancelled / failed.
+- **`src/runtime/daemon-delegate.ts`.** Single `viaDaemon<T>(envelope,
+  parse, fallback, opts)` primitive replaces the 11 open-coded
+  "try daemon, else fall back" sites across `queue.ts` and `review.ts`.
+  Ships three canonical reply parsers (task, count, tasks) built on
+  zod safeParse, so schema drift is caught at the wire layer too.
+
+### Changed — **BREAKING**
+
+- **`DOHYUN_SKIP_BREATH` env var removed.** Kent Beck's Features↔Options
+  rhythm is now strict for both AI and human callers: bypassing was
+  exactly the seed-corn anti-pattern the gate exists to prevent. Use
+  `dohyun task start --tidy-ad-hoc "<title>"` as the recovery path.
+  `EscapeHatch` type narrowed to `'DOHYUN_SKIP_VERIFY'` only.
+- **`replacePendingTasks` preserves terminal-state tasks.** Kept set
+  changed from `completed | review-pending` to *"anything not pending
+  and not in_progress"*. Cancelled and failed tasks now survive plan
+  reload as audit records. Use `dohyun queue clean` to prune
+  explicitly. The old "auto-prune on reload" behavior is gone.
+
 ### Fixed
 
-- **daemon state_server now owns review transitions.** `dohyun review
-  approve` and `reject` used to write `queue.json` directly. When a daemon
-  was running, its in-memory snapshot — which still showed the task as
-  review-pending — would clobber the transition on the next mutation
-  (enqueue, `check_dod`, …) and the approve looked like it had silently
-  rolled back. Now the CLI sends `review_approve`/`review_reject` envelopes
-  through the socket; the state server flips the task, persists, and any
-  subsequent write starts from the correct snapshot. Elixir-less sessions
-  go through the same code path via a fallback that also stamps
-  `reviewedAt`.
+- **Zod / Task type drift.** `TaskSchema` was missing `reviewedAt`,
+  so every queue round-trip silently stripped the review audit
+  timestamp. Added the field + the compile-time drift guard.
+- **`writeAtomic` tmp collision under concurrent writes.** The tmp
+  path was `${filePath}.tmp.${Date.now()}`; two writers in the same
+  millisecond would race and the loser hit ENOENT on rename. Tmp
+  now includes `pid` + 4 bytes of entropy.
+- **`guard.detectLoop` substring false positive.** `fileName.includes`
+  matched `myfoo.ts` and `foo.ts.bak` when querying `foo.ts`.
+  Switched to a word-boundary regex.
+- **`verify.walk` heavy build caches.** `@verify:grep(pattern)` now
+  skips `_build`, `.code-review-graph`, `coverage`, `.next`, `.turbo`
+  in addition to the existing `node_modules / dist / .git / .dohyun`.
+  Verify time on real repos drops from seconds to sub-100ms.
+- **Daemon review transitions** (carried from unreleased pre-0.15 work).
+  `dohyun review approve/reject` used to write `queue.json` directly,
+  letting the daemon's stale in-memory snapshot clobber the transition.
+  Now routed through the socket; Elixir-less sessions take the same
+  code path via a fallback that also stamps `reviewedAt`.
+
+### Removed
+
+- **`src/memory/notepad.ts`** dead wrapper. Its `addNote` was a 2-line
+  passthrough to `state/write.ts:appendNotepad`; `getNotes` was unused.
+  `scripts/note.ts` now imports from `state/write.ts` directly.
+
+### Docs
+
+- `docs/breath-gate.md` — removed the `DOHYUN_SKIP_BREATH` bypass
+  section, documented `--tidy-ad-hoc` as the recovery path, and noted
+  that `plan load` preserves terminal-state tasks.
+- `docs/verify-gate.md` — documented the human-only bypass policy
+  (AI refusal + `ai-bypass-attempt` log + Stop hook re-injection) and
+  refreshed the `@verify:grep` SKIP_DIRS list.
+- `CLAUDE.md` Rules #1, #3, #4 — reflect that DoD-skip refusal, breath
+  block, and evidence cheating are now runtime enforcement, not just
+  prose guidance.
 
 ## [0.14.3] - 2026-04-20
 
