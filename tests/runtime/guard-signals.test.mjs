@@ -62,6 +62,40 @@ test('detectLoop: returns null when no log file', async () => {
   }
 })
 
+test('detectLoop: does NOT match substring neighbours (myfoo.ts, foo.ts.bak)', async () => {
+  // Previously: fileName.includes('foo.ts') matched 'myfoo.ts' and
+  // 'foo.ts.bak' because the check was plain string contains.
+  const cwd = sandbox()
+  try {
+    writeLog(cwd, [
+      '## [2026-04-16 10:00:00] write | edited src/myfoo.ts',
+      '## [2026-04-16 10:01:00] write | edited src/myfoo.ts',
+      '## [2026-04-16 10:02:00] write | edited src/foo.ts.bak',
+    ])
+    const warn = await detectLoop('src/foo.ts', cwd)
+    assert.equal(warn, null, 'should not false-positive on myfoo.ts / foo.ts.bak')
+  } finally {
+    rmSync(cwd, { recursive: true, force: true })
+  }
+})
+
+test('detectLoop: still triggers on 3+ exact-name edits', async () => {
+  // Negative of the neighbour test — real loop should still fire.
+  const cwd = sandbox()
+  try {
+    writeLog(cwd, [
+      '## [2026-04-16 10:00:00] write | edited src/other/foo.ts',
+      '## [2026-04-16 10:01:00] edit  | foo.ts rewritten',
+      '## [2026-04-16 10:02:00] write | src/foo.ts touched',
+    ])
+    const warn = await detectLoop('src/foo.ts', cwd)
+    assert.ok(warn)
+    assert.equal(warn.signal, 'loop')
+  } finally {
+    rmSync(cwd, { recursive: true, force: true })
+  }
+})
+
 // --- detectScopeCreep ---
 
 test('detectScopeCreep: warns when file is not in taskFiles', () => {

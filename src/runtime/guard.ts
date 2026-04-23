@@ -17,6 +17,9 @@ export interface GuardWarning {
 
 /**
  * Detect loop: same file edited 3+ times in recent log entries.
+ *
+ * Matches the file name as a whole path segment / word so that
+ * `foo.ts` does not match `myfoo.ts` or `foo.ts.bak`.
  */
 export async function detectLoop(
   filePath: string,
@@ -29,8 +32,9 @@ export async function detectLoop(
   const lines = log.split('\n').filter(l => l.startsWith('## ['))
   const recentLines = lines.slice(-20)
 
+  const nameRe = wholeNameMatcher(fileName)
   const editCount = recentLines.filter(line =>
-    line.includes(fileName) && (line.includes('edit') || line.includes('write'))
+    nameRe.test(line) && (line.includes('edit') || line.includes('write'))
   ).length
 
   if (editCount >= 3) {
@@ -42,6 +46,14 @@ export async function detectLoop(
   }
 
   return null
+}
+
+function wholeNameMatcher(name: string): RegExp {
+  // File name must be bounded by a non-alphanumeric, non-dot, non-hyphen,
+  // non-underscore character (or string boundary) on both sides so that
+  // `foo.ts` does not match `myfoo.ts` or `foo.ts.bak`.
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?:^|[^A-Za-z0-9._\\-])${escaped}(?:$|[^A-Za-z0-9._\\-])`)
 }
 
 /**
