@@ -15,6 +15,7 @@ import type {
   LastRunState,
   CurrentTaskState,
   QueueState,
+  Task,
 } from './contracts.js'
 
 // ─── Primitives ────────────────────────────────────────────────────
@@ -75,6 +76,8 @@ export const TaskSchema = z.object({
   updatedAt: z.string(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
+  // Optional for older queue.json files written before review gate existed.
+  reviewedAt: z.string().nullable().optional(),
   metadata: z.record(z.unknown()),
 })
 
@@ -97,6 +100,7 @@ const _modesCheck: AssertEqual<z.infer<typeof ModesSchema>, ModesState> = true
 const _lastRunCheck: AssertEqual<z.infer<typeof LastRunSchema>, LastRunState> = true
 const _currentTaskCheck: AssertEqual<z.infer<typeof CurrentTaskSchema>, CurrentTaskState> = true
 const _queueCheck: AssertEqual<z.infer<typeof QueueSchema>, QueueState> = true
+const _taskCheck: AssertEqual<z.infer<typeof TaskSchema>, Task> = true
 
 // Prevent unused variable warnings
 void _sessionCheck
@@ -104,3 +108,4 @@ void _modesCheck
 void _lastRunCheck
 void _currentTaskCheck
 void _queueCheck
+void _taskCheck

@@ -87,3 +87,27 @@ test('readQueue: returns the migrated queue for a valid v1 file', async () => {
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('readQueue: preserves reviewedAt field through schema parse (no drop)', async () => {
+  // TaskSchema must not strip reviewedAt — the review audit timestamp was
+  // being silently lost on every queue read/write round-trip because zod
+  // defaulted to strip unknown fields.
+  const { readQueue } = await import(resolve(here, '..', '..', 'dist', 'src', 'state', 'read.js'))
+  const dir = mkdtempSync(join(tmpdir(), 'dohyun-reviewed-'))
+  try {
+    mkdirSync(join(dir, '.dohyun', 'runtime'), { recursive: true })
+    const reviewedTs = '2026-04-22T12:00:00.000Z'
+    const queue = makeV1Queue()
+    queue.tasks[0].reviewedAt = reviewedTs
+    writeFileSync(
+      join(dir, '.dohyun', 'runtime', 'queue.json'),
+      JSON.stringify(queue),
+      'utf8'
+    )
+    const q = await readQueue(dir)
+    assert.ok(q, 'queue should be non-null')
+    assert.equal(q.tasks[0].reviewedAt, reviewedTs, 'reviewedAt must survive schema parse')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
