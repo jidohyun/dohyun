@@ -64,6 +64,22 @@ Schema만 먼저 확정. 이후 모든 task가 이 타입에 의존.
 
 ---
 
+### T10: pending-approvals hardening — id validation + poison-list safety (fix)
+
+T3 독립 리뷰에서 발견된 3건: (a) `fileFor(id, cwd)`가 `id="../queue"`같은 path traversal 허용, (b) `listPending`이 한 파일이라도 parse 실패하면 전체 예외 — cascade failure, (c) 커밋 메시지가 "newest first" 주장했지만 `readdir` 순서(OS 의존). 이 3건을 RED 테스트로 재현 후 고정.
+
+**DoD:**
+- [ ] `tests/runtime/pending-approvals-hardening.test.mjs` 신규 — (a) `readPending('../something', cwd)` / `writeDecision('..', ..., cwd)` 둘 다 throw, (b) `.dohyun/pending-approvals/` 안에 corrupt JSON 파일이 있어도 `listPending`이 유효한 것만 반환하고 throw하지 않음 (c) `listPending`이 `requestedAt` 오름차순으로 정렬 반환 (deterministic 순서 보장)
+- [ ] 세 테스트 모두 현재 코드에서 RED (먼저 실패 확인)
+- [ ] `pending-approvals.ts`에 `assertSafeId(id)` 추가 — `/^[A-Za-z0-9_-]{1,64}$/` 미일치 시 throw (UUID 포맷 허용)
+- [ ] `listPending`이 per-entry try/catch로 invalid 파일 skip + `requestedAt`으로 정렬
+- [ ] `npm test` GREEN, `npm run build` 경고 0건
+- [ ] 커밋 type: `fix(pending-approvals):` — 행위 변경 있음, 구조 변경과 분리
+
+**Files:** `src/runtime/pending-approvals.ts` `tests/runtime/pending-approvals-hardening.test.mjs`
+
+---
+
 ### T4: pre-write-guard로 pending-approvals/ 쓰기 차단 (feature)
 
 AI가 JSON을 self-write로 decision 필드 조작 못 하게. 구조 변경 없이 guard 로직만 추가.

@@ -18,7 +18,16 @@ interface Decision {
   context?: string
 }
 
+const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/
+
+function assertSafeId(id: string): void {
+  if (!SAFE_ID.test(id)) {
+    throw new Error(`invalid pending-approval id: ${JSON.stringify(id)} (unsafe path segment)`)
+  }
+}
+
 function fileFor(id: string, cwd: string): string {
+  assertSafeId(id)
   return resolve(paths.pendingApprovals(cwd), `${id}.json`)
 }
 
@@ -62,9 +71,16 @@ export async function listPending(cwd: string): Promise<PendingApproval[]> {
   for (const name of entries) {
     if (!name.endsWith('.json')) continue
     const id = name.slice(0, -'.json'.length)
-    const rec = await readPending(id, cwd)
-    if (rec) out.push(rec)
+    if (!SAFE_ID.test(id)) continue
+    try {
+      const rec = await readPending(id, cwd)
+      if (rec) out.push(rec)
+    } catch {
+      // Skip corrupt or schema-violating files — one bad record must not
+      // poison the whole list (cascade failure would stall approval flow).
+    }
   }
+  out.sort((a, b) => a.requestedAt.localeCompare(b.requestedAt))
   return out
 }
 
