@@ -1,5 +1,6 @@
 import { readJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
+import { listPending } from './pending-approvals.js'
 import type { QueueState, CurrentTaskState } from './contracts.js'
 
 /**
@@ -34,12 +35,14 @@ export interface ContinuationInfo {
   currentTask: string | null
   pendingCount: number
   reviewPendingIds: string[]
+  unresolvedApprovals: number
 }
 
 export async function getContinuationInfo(cwd?: string): Promise<ContinuationInfo> {
-  const [currentTask, queue] = await Promise.all([
+  const [currentTask, queue, approvals] = await Promise.all([
     readJson<CurrentTaskState>(paths.currentTask(cwd)),
     readJson<QueueState>(paths.queue(cwd)),
+    listPending(cwd ?? process.cwd()),
   ])
 
   const activeTask = currentTask?.task?.status === 'in_progress'
@@ -51,10 +54,16 @@ export async function getContinuationInfo(cwd?: string): Promise<ContinuationInf
   ) ?? []
 
   const reviewPendingIds = queue?.tasks.filter(t => t.status === 'review-pending').map(t => t.id) ?? []
-  const shouldContinue = activeTask !== null || pendingTasks.length > 0 || reviewPendingIds.length > 0
+  const unresolvedApprovals = approvals.filter(p => !p.decision).length
+  const shouldContinue = activeTask !== null
+    || pendingTasks.length > 0
+    || reviewPendingIds.length > 0
+    || unresolvedApprovals > 0
 
   let reason: string | null = null
-  if (activeTask) {
+  if (unresolvedApprovals > 0) {
+    reason = `${unresolvedApprovals} pending approval(s)`
+  } else if (activeTask) {
     reason = `In-progress task: "${activeTask.title}"`
   } else if (reviewPendingIds.length > 0) {
     reason = `${reviewPendingIds.length} review-pending task(s)`
@@ -68,6 +77,7 @@ export async function getContinuationInfo(cwd?: string): Promise<ContinuationInf
     currentTask: activeTask?.title ?? null,
     pendingCount: pendingTasks.length,
     reviewPendingIds,
+    unresolvedApprovals,
   }
 }
 

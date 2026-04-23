@@ -40,6 +40,17 @@ export function evaluateCheckpoint(
   breath: BreathState = { featuresSinceTidy: 0 },
   aiSignals?: AiSignals,
 ): CheckpointAction {
+  // Pending approvals outrank every other signal. Each one represents a DoD
+  // the AI could not verify on its own under CLAUDECODE=1, so the session
+  // must not end until a human resolves them via `dohyun approve`.
+  if ((continuationInfo.unresolvedApprovals ?? 0) > 0) {
+    const n = continuationInfo.unresolvedApprovals
+    return {
+      type: 'continue',
+      reason: `[dohyun checkpoint] ${n} pending approval(s). resolve with: dohyun approve list`,
+    }
+  }
+
   // No current task — allow stop, unless reviews are outstanding.
   // Ralph loop only activates when a task is actively in_progress (dequeued).
   // Just having pending tasks in the queue is NOT enough to block termination.
