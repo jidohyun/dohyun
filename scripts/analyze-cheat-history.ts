@@ -78,22 +78,16 @@ function formatCase(c: CheatCase, idx: number): string {
   ].join('\n')
 }
 
-export async function runAnalyzeCheatHistory(_args: string[], cwd: string): Promise<void> {
-  const logContent = await readText(paths.log(cwd))
-  if (!logContent) {
-    console.log('No log entries — no cheat data to analyze.')
-    return
-  }
-
-  const entries = logContent
+function parseEntries(logContent: string): LogEntry[] {
+  return logContent
     .split('\n')
     .filter(l => l.startsWith('## ['))
     .map(parseLine)
     .filter((e): e is LogEntry => e !== null)
+}
 
-  const cases = correlate(entries)
-
-  console.log(`Scanned ${entries.length} log entries.`)
+function printReport(cases: CheatCase[], totalEntries: number): void {
+  console.log(`Scanned ${totalEntries} log entries.`)
   console.log(`Found ${cases.length} [evidence]→dod-check correlations within ${CORRELATION_WINDOW_SEC}s.\n`)
 
   if (cases.length === 0) {
@@ -109,4 +103,15 @@ export async function runAnalyzeCheatHistory(_args: string[], cwd: string): Prom
   if (cases.length > show) {
     console.log(`… ${cases.length - show} more case(s).`)
   }
+}
+
+export async function runAnalyzeCheatHistory(_args: string[], cwd: string): Promise<void> {
+  const logContent = await readText(paths.log(cwd))
+  if (!logContent) {
+    console.log('No log entries — no cheat data to analyze.')
+    return
+  }
+  const entries = parseEntries(logContent)
+  const cases = correlate(entries)
+  printReport(cases, entries.length)
 }
