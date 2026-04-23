@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve, join } from 'node:path'
+import { createPending, listPending } from './pending-approvals.js'
 
 /** Deterministic verifier kinds. `manual` requires a recent [evidence] notepad entry. */
 export type VerifyKind = 'test' | 'build' | 'file-exists' | 'grep' | 'manual'
@@ -21,6 +22,10 @@ export type VerifyOptions = {
   cwd?: string
   /** Window for manual evidence freshness, default 5 minutes. */
   windowMs?: number
+  /** Active task id — required for manual under CLAUDECODE=1 (out-of-band queue). */
+  taskId?: string
+  /** The DoD text being verified — recorded on the pending-approval record. */
+  dodText?: string
 }
 
 const TAG_RE = /@verify:([a-z-]+)(?:\(([^)]*)\))?/
@@ -45,7 +50,7 @@ export async function runVerify(rule: VerifyRule, opts: VerifyOptions = {}): Pro
     case 'grep':
       return verifyGrep(rule.arg, cwd)
     case 'manual':
-      return verifyManual(opts.windowMs ?? 5 * 60 * 1000, cwd)
+      return verifyManual(opts.windowMs ?? 5 * 60 * 1000, cwd, opts.taskId, opts.dodText)
     case 'test':
       return runScript('test', cwd)
     case 'build':
@@ -69,12 +74,53 @@ function verifyGrep(pattern: string, cwd: string): VerifyResult {
   return { ok: false, reason: `pattern not found: ${pattern}` }
 }
 
-function verifyManual(windowMs: number, cwd: string): VerifyResult {
+async function verifyManual(
+  windowMs: number,
+  cwd: string,
+  taskId?: string,
+  dodText?: string,
+): Promise<VerifyResult> {
+  if (process.env.CLAUDECODE === '1') {
+    return verifyManualViaApprovalQueue(cwd, taskId, dodText)
+  }
+  console.warn('[dohyun] @verify:manual notepad path is deprecated; will be removed in 0.19')
+  return verifyManualViaNotepad(windowMs, cwd)
+}
+
+async function verifyManualViaApprovalQueue(
+  cwd: string,
+  taskId: string | undefined,
+  dodText: string | undefined,
+): Promise<VerifyResult> {
+  if (!taskId || !dodText) {
+    return { ok: false, reason: 'manual verify under CLAUDECODE=1 requires taskId and dodText' }
+  }
+  const existing = (await listPending(cwd)).find(
+    p => p.taskId === taskId && p.dodText === dodText,
+  )
+  if (existing) {
+    if (existing.decision === 'approved') return { ok: true }
+    if (existing.decision === 'rejected') {
+      const reason = existing.context ? `human rejected: ${existing.context}` : 'human rejected'
+      return { ok: false, reason }
+    }
+    return {
+      ok: false,
+      reason: `pending human approval (id: ${existing.id}). run: dohyun approve ${existing.id}`,
+    }
+  }
+  const created = await createPending({ taskId, dodText }, cwd)
+  return {
+    ok: false,
+    reason: `pending human approval (id: ${created.id}). run: dohyun approve ${created.id}`,
+  }
+}
+
+function verifyManualViaNotepad(windowMs: number, cwd: string): VerifyResult {
   const notepadPath = resolve(cwd, '.dohyun', 'memory', 'notepad.md')
   const content = safeRead(notepadPath)
   if (!content) return { ok: false, reason: 'no evidence note in notepad' }
   const cutoff = Date.now() - windowMs
-  // Lines look like: ## [2026-04-15T02:07:41.234Z] [evidence] text
   const re = /^##\s*\[([^\]]+)\]\s*\[evidence\]/gm
   let m: RegExpExecArray | null
   while ((m = re.exec(content)) !== null) {

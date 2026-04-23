@@ -55,7 +55,7 @@ export async function runDod(cwd: string, args: string[] = []): Promise<void> {
       if (isBypassed('DOHYUN_SKIP_VERIFY')) {
         await logBypass('DOHYUN_SKIP_VERIFY', `for "${item}"`, cwd)
       } else {
-        const result = await runVerify(rule, { cwd })
+        const result = await runVerify(rule, { cwd, taskId: current.task.id, dodText: item })
         if (!result.ok) {
           console.error(`verify failed (${rule.kind}): ${result.reason}`)
           await appendLog('verify-failed', `WARN: ${rule.kind} failed for "${item}" — ${result.reason}`, cwd)

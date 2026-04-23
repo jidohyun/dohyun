@@ -1,0 +1,9 @@
+{
+  "id": "53ec776d-20f8-4a90-9c43-6bef41ef8488",
+  "taskId": "9e36bda5-1e91-429e-9d37-4f438615def0",
+  "dodText": "CLAUDECODE unset일 때: 기존 notepad 경로 유지 + `console.warn('[dohyun] @verify:manual notepad path is deprecated; will be removed in 0.19')` (stderr)",
+  "requestedAt": "2026-04-23T10:34:27.423Z",
+  "decision": "approved",
+  "decidedAt": "2026-04-23T10:45:00.000Z",
+  "decidedBy": "human"
+}

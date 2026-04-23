@@ -122,52 +122,71 @@ test('runVerify grep: fails when pattern absent', async () => {
 })
 
 // ---------- runVerify: manual ----------
+// These tests exercise the legacy notepad path, which is active only when
+// CLAUDECODE is unset. Under CLAUDECODE=1 the out-of-band approval queue
+// handles @verify:manual — covered by verify-manual-oob.test.mjs.
+
+function withoutClaudeCode(fn) {
+  const prev = process.env.CLAUDECODE
+  delete process.env.CLAUDECODE
+  return Promise.resolve(fn()).finally(() => {
+    if (prev !== undefined) process.env.CLAUDECODE = prev
+  })
+}
 
 test('runVerify manual: passes when [evidence] note written within window', async () => {
-  const dir = sandbox()
-  try {
-    const now = new Date().toISOString()
-    appendFileSync(join(dir, '.dohyun', 'memory', 'notepad.md'), `## [${now}] [evidence] I checked this manually\n`)
-    const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
-    assert.equal(r.ok, true)
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
+  await withoutClaudeCode(async () => {
+    const dir = sandbox()
+    try {
+      const now = new Date().toISOString()
+      appendFileSync(join(dir, '.dohyun', 'memory', 'notepad.md'), `## [${now}] [evidence] I checked this manually\n`)
+      const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
+      assert.equal(r.ok, true)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 test('runVerify manual: fails when no evidence note exists', async () => {
-  const dir = sandbox()
-  try {
-    const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
-    assert.equal(r.ok, false)
-    assert.match(r.reason, /evidence/i)
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
+  await withoutClaudeCode(async () => {
+    const dir = sandbox()
+    try {
+      const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
+      assert.equal(r.ok, false)
+      assert.match(r.reason, /evidence/i)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 test('runVerify manual: fails when evidence note is older than window', async () => {
-  const dir = sandbox()
-  try {
-    const stale = new Date(Date.now() - 10 * 60 * 1000).toISOString()
-    appendFileSync(join(dir, '.dohyun', 'memory', 'notepad.md'), `## [${stale}] [evidence] stale\n`)
-    const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
-    assert.equal(r.ok, false)
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
+  await withoutClaudeCode(async () => {
+    const dir = sandbox()
+    try {
+      const stale = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+      appendFileSync(join(dir, '.dohyun', 'memory', 'notepad.md'), `## [${stale}] [evidence] stale\n`)
+      const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
+      assert.equal(r.ok, false)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 test('runVerify manual: ignores notes without [evidence] marker', async () => {
-  const dir = sandbox()
-  try {
-    const now = new Date().toISOString()
-    appendFileSync(join(dir, '.dohyun', 'memory', 'notepad.md'), `## [${now}] plain note\n`)
-    const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
-    assert.equal(r.ok, false)
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
+  await withoutClaudeCode(async () => {
+    const dir = sandbox()
+    try {
+      const now = new Date().toISOString()
+      appendFileSync(join(dir, '.dohyun', 'memory', 'notepad.md'), `## [${now}] plain note\n`)
+      const r = await runVerify({ kind: 'manual', arg: '' }, { cwd: dir, windowMs: 5 * 60 * 1000 })
+      assert.equal(r.ok, false)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })
 
 // ---------- runVerify: test/build (script spawn) ----------
