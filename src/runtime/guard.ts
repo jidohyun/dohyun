@@ -10,9 +10,52 @@ import { readText } from '../utils/fs.js'
 import { paths } from '../state/paths.js'
 
 export interface GuardWarning {
-  signal: 'loop' | 'scope_creep' | 'cheat' | 'ai-bypass-attempt'
+  signal: 'loop' | 'scope_creep' | 'cheat' | 'ai-bypass-attempt' | 'dangerous-write'
   severity: 'warning' | 'block'
   message: string
+}
+
+const DANGEROUS_PATTERNS: readonly RegExp[] = [
+  /\.env$/,
+  /\.env\..+$/,
+  /credentials/i,
+  /secret/i,
+  /\.pem$/,
+  /\.key$/,
+  /id_rsa/,
+  /\.dohyun\/state\//,
+]
+
+const WARN_PATTERNS: readonly RegExp[] = [
+  /package-lock\.json$/,
+  /yarn\.lock$/,
+  /pnpm-lock\.yaml$/,
+]
+
+/**
+ * Detect a write that either targets a secret-bearing file (block) or an
+ * artefact that is usually machine-generated (warn).
+ */
+export function detectDangerousWrite(filePath: string): GuardWarning | null {
+  for (const p of DANGEROUS_PATTERNS) {
+    if (p.test(filePath)) {
+      return {
+        signal: 'dangerous-write',
+        severity: 'block',
+        message: `BLOCKED: Writing to "${filePath}" matches dangerous pattern`,
+      }
+    }
+  }
+  for (const p of WARN_PATTERNS) {
+    if (p.test(filePath)) {
+      return {
+        signal: 'dangerous-write',
+        severity: 'warning',
+        message: `WARNING: Writing to "${filePath}" — are you sure?`,
+      }
+    }
+  }
+  return null
 }
 
 /**

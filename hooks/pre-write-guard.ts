@@ -10,28 +10,11 @@
  * Thin hook — delegates to guard module for signal detection.
  */
 
-import { detectLoop, detectScopeCreep, detectCheat, detectAiBypass } from '../src/runtime/guard.js'
+import { detectLoop, detectScopeCreep, detectCheat, detectAiBypass, detectDangerousWrite } from '../src/runtime/guard.js'
 import { readJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
 import { appendLog } from '../src/state/write.js'
 import type { CurrentTaskState } from '../src/runtime/contracts.js'
-
-const DANGEROUS_PATTERNS = [
-  /\.env$/,
-  /\.env\..+$/,
-  /credentials/i,
-  /secret/i,
-  /\.pem$/,
-  /\.key$/,
-  /id_rsa/,
-  /\.dohyun\/state\//,
-]
-
-const WARN_PATTERNS = [
-  /package-lock\.json$/,
-  /yarn\.lock$/,
-  /pnpm-lock\.yaml$/,
-]
 
 interface WriteEvent {
   filePath?: string
@@ -72,18 +55,14 @@ async function main() {
   console.error(`[dohyun] hook fired: pre-write-guard → ${filePath}`)
 
   // Layer 1: Dangerous patterns
-  for (const pattern of DANGEROUS_PATTERNS) {
-    if (pattern.test(filePath)) {
-      console.error(`[dohyun] BLOCKED: Writing to "${filePath}" matches dangerous pattern`)
+  const dangerous = detectDangerousWrite(filePath)
+  if (dangerous) {
+    if (dangerous.severity === 'block') {
+      console.error(`[dohyun] ${dangerous.message}`)
       process.exitCode = 1
       return
     }
-  }
-
-  for (const pattern of WARN_PATTERNS) {
-    if (pattern.test(filePath)) {
-      console.warn(`[dohyun] WARNING: Writing to "${filePath}" — are you sure?`)
-    }
+    console.warn(`[dohyun] ${dangerous.message}`)
   }
 
   // Layer 1b: AI bypass — human-only directories
