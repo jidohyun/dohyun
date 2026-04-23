@@ -272,6 +272,74 @@ defmodule DohyunDaemon.StateServerTest do
     end
   end
 
+  describe "replace_pending" do
+    test "drops pending/in_progress, preserves terminal states, appends new pending", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "p1", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "ip1", "status" => "in_progress"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "done1", "status" => "completed"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "can1", "status" => "cancelled"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "fail1", "status" => "failed"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "rev1", "status" => "review-pending"}))
+
+      new_rows = [
+        sample_task(%{"id" => "new1", "title" => "A", "status" => "pending"}),
+        sample_task(%{"id" => "new2", "title" => "B", "status" => "pending"})
+      ]
+
+      assert {:ok, created} = StateServer.replace_pending(pid, new_rows)
+      assert Enum.map(created, & &1["title"]) == ["A", "B"]
+
+      %{"tasks" => tasks} = StateServer.get_queue(pid)
+      ids = Enum.map(tasks, & &1["id"])
+
+      # Pending + in_progress gone
+      refute "p1" in ids
+      refute "ip1" in ids
+      # Terminal states preserved
+      assert "done1" in ids
+      assert "can1" in ids
+      assert "fail1" in ids
+      assert "rev1" in ids
+      # New pending appended
+      assert "new1" in ids
+      assert "new2" in ids
+
+      GenServer.stop(pid)
+    end
+
+    test "persists the replacement atomically (queue.json on disk matches)", %{
+      harness_root: root,
+      queue_path: qpath
+    } do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "old", "status" => "pending"}))
+
+      new_rows = [sample_task(%{"id" => "fresh", "title" => "T", "status" => "pending"})]
+      {:ok, _} = StateServer.replace_pending(pid, new_rows)
+
+      disk = File.read!(qpath) |> Jason.decode!()
+      disk_ids = Enum.map(disk["tasks"], & &1["id"])
+      refute "old" in disk_ids
+      assert "fresh" in disk_ids
+
+      GenServer.stop(pid)
+    end
+
+    test "empty new_tasks clears pending but keeps audit rows", %{harness_root: root} do
+      {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "p", "status" => "pending"}))
+      {:ok, _} = StateServer.enqueue(pid, sample_task(%{"id" => "d", "status" => "completed"}))
+
+      assert {:ok, []} = StateServer.replace_pending(pid, [])
+
+      %{"tasks" => tasks} = StateServer.get_queue(pid)
+      assert Enum.map(tasks, & &1["id"]) == ["d"]
+
+      GenServer.stop(pid)
+    end
+  end
+
   describe "reorder_pending" do
     test "target 'first' moves a pending task to the front of the pending segment", %{harness_root: root} do
       {:ok, pid} = StateServer.start_link(harness_root: root, name: nil)

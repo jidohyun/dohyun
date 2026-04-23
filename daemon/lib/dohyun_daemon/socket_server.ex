@@ -120,6 +120,27 @@ defmodule DohyunDaemon.SocketServer do
     %{ok: false, error: "invalid_args"}
   end
 
+  # replace_pending — plan reload. Each incoming PlanTask is
+  # materialised into a full Task (new id, timestamps, status=pending,
+  # priority=normal) and handed to StateServer in a single call, so
+  # kept-vs-dropped semantics never interleave with other writes.
+  defp dispatch("replace_pending", %{"args" => %{"tasks" => plan_tasks}}, state_server)
+       when is_list(plan_tasks) do
+    case build_plan_tasks(plan_tasks) do
+      {:ok, built} ->
+        case StateServer.replace_pending(state_server, built) do
+          {:ok, created} -> %{ok: true, data: %{tasks: created}}
+          {:error, reason} -> %{ok: false, error: to_string(reason)}
+        end
+
+      {:error, reason} ->
+        %{ok: false, error: to_string(reason)}
+    end
+  end
+
+  defp dispatch("replace_pending", _envelope, _state_server),
+    do: %{ok: false, error: "invalid_args"}
+
   defp dispatch("dequeue", _envelope, state_server) do
     case StateServer.dequeue(state_server) do
       {:ok, nil} -> %{ok: true, data: %{task: nil}}
@@ -229,6 +250,27 @@ defmodule DohyunDaemon.SocketServer do
       {:ok, task}
     else
       {:error, :invalid_args}
+    end
+  end
+
+  # Plan tasks arrive as {title, type, dod, metadata} — no id, no
+  # timestamps. Force status=pending so plan reload cannot sneak in a
+  # pre-completed row.
+  defp build_plan_tasks(list) do
+    Enum.reduce_while(list, {:ok, []}, fn raw, {:ok, acc} ->
+      args =
+        raw
+        |> Map.put("status", "pending")
+        |> Map.put_new("priority", "normal")
+
+      case build_task(args) do
+        {:ok, task} -> {:cont, {:ok, [task | acc]}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+    |> case do
+      {:ok, rev} -> {:ok, Enum.reverse(rev)}
+      other -> other
     end
   end
 

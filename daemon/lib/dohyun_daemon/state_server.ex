@@ -33,6 +33,10 @@ defmodule DohyunDaemon.StateServer do
     GenServer.call(server, {:enqueue, task})
   end
 
+  def replace_pending(server \\ __MODULE__, tasks) when is_list(tasks) do
+    GenServer.call(server, {:replace_pending, tasks})
+  end
+
   def dequeue(server \\ __MODULE__) do
     GenServer.call(server, :dequeue)
   end
@@ -124,6 +128,38 @@ defmodule DohyunDaemon.StateServer do
         new_queue = %{state.queue | "tasks" => state.queue["tasks"] ++ [task]}
         :ok = persist_atomic(state.queue_path, new_queue)
         {:reply, {:ok, task}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  # replace_pending — plan reload.
+  #
+  # Drops pending / in_progress rows, keeps every terminal-state task
+  # (completed, review-pending, cancelled, failed) as audit history,
+  # then appends the new pending rows. Single-writer: the daemon owns
+  # both the in-memory snapshot and the file, so plan reload no longer
+  # races with concurrent mutations. Mirrors the CLI fallback in
+  # src/runtime/queue.ts:replacePendingTasks.
+  def handle_call({:replace_pending, new_tasks}, _from, state)
+      when is_list(new_tasks) do
+    kept =
+      Enum.reject(state.queue["tasks"], fn t ->
+        t["status"] == "pending" or t["status"] == "in_progress"
+      end)
+
+    case Enum.reduce_while(new_tasks, {:ok, []}, fn t, {:ok, acc} ->
+           case validate_task(t) do
+             :ok -> {:cont, {:ok, [t | acc]}}
+             {:error, reason} -> {:halt, {:error, reason}}
+           end
+         end) do
+      {:ok, rev_created} ->
+        created = Enum.reverse(rev_created)
+        new_queue = %{state.queue | "tasks" => kept ++ created}
+        :ok = persist_atomic(state.queue_path, new_queue)
+        {:reply, {:ok, created}, %{state | queue: new_queue, last_activity: monotonic_ms()}}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
