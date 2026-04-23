@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile, rename, access } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { randomBytes } from 'node:crypto'
 
 export async function ensureDir(dirPath: string): Promise<void> {
   await mkdir(dirPath, { recursive: true })
@@ -14,7 +15,11 @@ export async function readText(filePath: string): Promise<string | null> {
 }
 
 export async function writeAtomic(filePath: string, content: string): Promise<void> {
-  const tmp = `${filePath}.tmp.${Date.now()}`
+  // Tmp name must be unique per writer, even within the same millisecond,
+  // and even across concurrent processes. pid alone is not enough (same
+  // process can fire parallel writes); randomBytes covers both cases.
+  const suffix = `${Date.now()}.${process.pid}.${randomBytes(4).toString('hex')}`
+  const tmp = `${filePath}.tmp.${suffix}`
   await ensureDir(dirname(filePath))
   await writeFile(tmp, content, 'utf-8')
   await rename(tmp, filePath)
