@@ -110,6 +110,11 @@ async function main() {
       await runAnalyzeCheatHistory(args, workDir)
       break
     }
+    case 'approve': {
+      const { runApprove } = await import('../../scripts/approve.js')
+      await runApprove(args, workDir)
+      break
+    }
     case 'daemon': {
       const { runDaemon } = await import('../../scripts/daemon.js')
       const [sub, ...rest] = args

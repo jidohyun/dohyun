@@ -111,6 +111,19 @@ export async function runDoctor(cwd: string, opts: DoctorOptions = {}): Promise<
     })
   }
 
+  // Pending approvals — informational count. Nonzero is a "needs attention"
+  // signal, not a failure, since resolving pending-approvals requires a
+  // human in the loop outside the doctor run.
+  const { listPending } = await import('../src/runtime/pending-approvals.js')
+  const unresolved = (await listPending(cwd)).filter(p => !p.decision)
+  checks.push({
+    name: 'pending-approvals',
+    ok: unresolved.length === 0,
+    detail: unresolved.length === 0
+      ? 'none'
+      : `${unresolved.length} unresolved — run \`dohyun approve list\``,
+  })
+
   // Print results
   const maxName = Math.max(...checks.map(c => c.name.length))
   for (const check of checks) {
