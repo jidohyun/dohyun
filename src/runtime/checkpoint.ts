@@ -15,16 +15,30 @@ import { isDodComplete } from './queue.js'
 import { suggestTidy } from './mode-manager.js'
 import type { ContinuationInfo } from './continuation.js'
 import type { BreathState } from './breath.js'
+import type { AiSignals } from './ai-signals.js'
 
 export type CheckpointAction =
   | { type: 'continue'; reason: string }       // DoD incomplete, keep working
   | { type: 'approve'; message: string }        // DoD complete, ask for approval
   | { type: 'done'; message: string }           // No tasks, session can end
 
+const AI_BYPASS_BANNER = [
+  '[dohyun] AI cannot bypass verify. Options:',
+  '  (1) write a real test / make the DoD pass honestly',
+  '  (2) add @verify:grep / @verify:file-exists / @verify:test tag to make this DoD deterministic',
+  '  (3) stop and ask the human to run with DOHYUN_SKIP_VERIFY=1',
+].join('\n')
+
+function prependAiSignalsBanner(reason: string, signals: AiSignals | undefined): string {
+  if (!signals?.recentAiBypassAttempt) return reason
+  return `${AI_BYPASS_BANNER}\n\n${reason}`
+}
+
 export function evaluateCheckpoint(
   currentTask: Task | null,
   continuationInfo: ContinuationInfo,
-  breath: BreathState = { featuresSinceTidy: 0 }
+  breath: BreathState = { featuresSinceTidy: 0 },
+  aiSignals?: AiSignals,
 ): CheckpointAction {
   // No current task — allow stop, unless reviews are outstanding.
   // Ralph loop only activates when a task is actively in_progress (dequeued).
@@ -35,7 +49,7 @@ export function evaluateCheckpoint(
         '[dohyun checkpoint] Review required',
         ...continuationInfo.reviewPendingIds.map(id => `  - dohyun review run ${id}`),
       ]
-      return { type: 'continue', reason: lines.join('\n') }
+      return { type: 'continue', reason: prependAiSignalsBanner(lines.join('\n'), aiSignals) }
     }
     if (continuationInfo.pendingCount > 0) {
       return {
@@ -59,12 +73,12 @@ export function evaluateCheckpoint(
 
     return {
       type: 'continue',
-      reason: [
+      reason: prependAiSignalsBanner([
         `[dohyun checkpoint] Task "${currentTask.title}" DoD: ${checked}/${total}`,
         'Work on these remaining DoD items (dohyun\'s own DoD, not Claude\'s TaskList):',
         ...remaining.map(item => `  - ${item}`),
         'After each item is verified, mark it complete via: dohyun dod check "<item>"',
-      ].join('\n'),
+      ].join('\n'), aiSignals),
     }
   }
 
