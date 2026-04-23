@@ -105,7 +105,12 @@ function safeRead(path: string): string | null {
   try { return readFileSync(path, 'utf8') } catch { return null }
 }
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '.dohyun'])
+const SKIP_DIRS = new Set([
+  'node_modules', 'dist', '.git', '.dohyun',
+  // Heavy build / tool caches that blow up verify walk time and have no
+  // user-written code the user would want to match against.
+  '_build', '.code-review-graph', 'coverage', '.next', '.turbo',
+])
 
 function* walk(dir: string): Generator<string> {
   let entries: string[]

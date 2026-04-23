@@ -75,6 +75,28 @@ test('runVerify file-exists: fails when file missing', async () => {
   }
 })
 
+test('runVerify grep: skips heavy build dirs (daemon/_build, .code-review-graph)', async () => {
+  // Regression: the walker previously only skipped node_modules/dist/.git/.dohyun.
+  // A pattern that lived only inside daemon/_build or .code-review-graph would
+  // still cause a minutes-long walk on real repos. Now it must not find
+  // patterns hidden in those dirs — both to enforce the skip and to keep
+  // verify fast.
+  const dir = sandbox()
+  try {
+    // Seed the pattern ONLY inside dirs that must be skipped.
+    mkdirSync(join(dir, 'daemon', '_build'), { recursive: true })
+    writeFileSync(join(dir, 'daemon', '_build', 'artifact.txt'), 'SECRET_TOKEN_HERE\n')
+    mkdirSync(join(dir, '.code-review-graph'), { recursive: true })
+    writeFileSync(join(dir, '.code-review-graph', 'graph.json'), 'SECRET_TOKEN_HERE\n')
+
+    const r = await runVerify({ kind: 'grep', arg: 'SECRET_TOKEN_HERE' }, { cwd: dir })
+    assert.equal(r.ok, false, 'pattern should NOT be found inside skipped build dirs')
+    assert.match(r.reason, /not found/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 // ---------- runVerify: grep ----------
 
 test('runVerify grep: passes when pattern found in tracked files', async () => {
