@@ -1,7 +1,14 @@
 import { appendLog } from '../state/write.js'
 
-/** Env var names that let a user bypass a deterministic gate. */
-export type EscapeHatch = 'DOHYUN_SKIP_VERIFY' | 'DOHYUN_SKIP_BREATH'
+/**
+ * Env var names that let a HUMAN caller bypass a deterministic gate.
+ *
+ * Note: breath gate does NOT have an escape hatch. Kent Beck's
+ * Features↔Options rhythm applies to the operator too — bypass would
+ * defeat the whole point. Use `dohyun task start --tidy-ad-hoc "<title>"`
+ * to insert a tidy task instead.
+ */
+export type EscapeHatch = 'DOHYUN_SKIP_VERIFY'
 
 /**
  * True when the host env looks like Claude Code (AI) rather than a human
@@ -42,8 +49,7 @@ export async function logBypass(
   detail: string,
   cwd?: string,
 ): Promise<void> {
-  const gate = hatch === 'DOHYUN_SKIP_VERIFY' ? 'verify' : 'breath'
-  await appendLog(`${gate}-bypassed`, `WARN: ${gate} bypassed via ${hatch} — ${detail}`, cwd)
+  await appendLog('verify-bypassed', `WARN: verify bypassed via ${hatch} — ${detail}`, cwd)
 }
 
 /**
@@ -55,10 +61,9 @@ export async function logAiBypassAttempt(
   detail: string,
   cwd?: string,
 ): Promise<void> {
-  const gate = hatch === 'DOHYUN_SKIP_VERIFY' ? 'verify' : 'breath'
   await appendLog(
     'ai-bypass-attempt',
-    `WARN: AI attempted to bypass ${gate} via ${hatch} — ${detail}`,
+    `WARN: AI attempted to bypass verify via ${hatch} — ${detail}`,
     cwd,
   )
 }

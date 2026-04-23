@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -195,7 +195,10 @@ test('checkpoint output includes "breath: N feature(s) since last tidy" on appro
   assert.match(out.reason ?? '', /breath:\s*3 feature\(s\) since last tidy/i)
 })
 
-test('task start: DOHYUN_SKIP_BREATH=1 bypasses the gate and logs WARN', () => {
+test('task start: DOHYUN_SKIP_BREATH is NOT honored — breath is strict for human too', () => {
+  // Kent Beck's breathing rhythm applies to the operator, not just AI:
+  // seed-corn eating is a personal discipline issue. The previous
+  // DOHYUN_SKIP_BREATH env was removed in favor of --tidy-ad-hoc.
   const dir = sandbox()
   try {
     const planPath = join(dir, '.dohyun', 'plans', 'p.md')
@@ -217,12 +220,14 @@ test('task start: DOHYUN_SKIP_BREATH=1 bypasses the gate and logs WARN', () => {
     completeFeature(dir, 'a')
     completeFeature(dir, 'b')
 
-    const out = run(['task', 'start'], dir, { DOHYUN_SKIP_BREATH: '1' })
-    assert.match(out, /F3/)
-
-    const log = readFileSync(join(dir, '.dohyun', 'logs', 'log.md'), 'utf8')
-    assert.match(log, /breath bypassed/i)
-    assert.match(log, /WARN/)
+    // Even with the old env set (and without CLAUDECODE), the gate must
+    // hold. No more silent "breath bypassed" escape route.
+    const r = runExpectFail(['task', 'start'], dir, {
+      DOHYUN_SKIP_BREATH: '1',
+      CLAUDECODE: '',
+    })
+    assert.equal(r.failed, true)
+    assert.match(r.stderr, /breath gate/i)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

@@ -3,7 +3,6 @@ import { writeCurrentTask } from '../src/state/write.js'
 import { readCurrentTask } from '../src/state/read.js'
 import { appendLog } from '../src/state/write.js'
 import { getBreathState, shouldBlockFeatureStart } from '../src/runtime/breath.js'
-import { isBypassed, logBypass } from '../src/runtime/escape.js'
 import { requiresReview, writeReviewRequest } from '../src/runtime/review.js'
 import { dohyunError } from '../src/utils/error.js'
 
@@ -20,27 +19,24 @@ export async function runTask(args: string[], cwd: string): Promise<void> {
 
     // Kent Beck's Features↔Options breathing: after BREATH_LIMIT inhales,
     // a tidy exhale is required before the next feature can start.
-    // Refusing here turns the rule into structure — a prompt alone would
-    // fail under cognitive load (see CLAUDE.md § Features & Options).
+    // This gate is strict — no env escape — because bypassing it is
+    // exactly the "seed-corn eating" anti-pattern the gate exists for.
+    // Recovery path: `dohyun task start --tidy-ad-hoc "<title>"`.
     const next = await peekTask(cwd)
     const breath = await getBreathState(cwd)
     if (shouldBlockFeatureStart(next, breath)) {
-      if (isBypassed('DOHYUN_SKIP_BREATH')) {
-        await logBypass('DOHYUN_SKIP_BREATH', `features since tidy: ${breath.featuresSinceTidy}`, cwd)
-      } else {
-        console.error(
-          `breath gate: ${breath.featuresSinceTidy} feature(s) since last tidy. ` +
-            'tidy 태스크를 먼저 추가하세요 (add a tidy task before starting another feature).',
-        )
-        console.error('Hint: `dohyun tidy suggest` for candidates, or append a ### T...: <name> (tidy) task to your plan.')
-        await appendLog(
-          'breath-blocked',
-          `WARN: blocked feature start — ${breath.featuresSinceTidy} feature(s) since last tidy`,
-          cwd,
-        )
-        process.exitCode = 1
-        return
-      }
+      console.error(
+        `breath gate: ${breath.featuresSinceTidy} feature(s) since last tidy. ` +
+          'tidy 태스크를 먼저 추가하세요 (add a tidy task before starting another feature).',
+      )
+      console.error('Hint: `dohyun tidy suggest` for candidates, append a ### T...: <name> (tidy) task to your plan, or run `dohyun task start --tidy-ad-hoc "<title>"`.')
+      await appendLog(
+        'breath-blocked',
+        `WARN: blocked feature start — ${breath.featuresSinceTidy} feature(s) since last tidy`,
+        cwd,
+      )
+      process.exitCode = 1
+      return
     }
 
     const task = await dequeueTask(cwd)
