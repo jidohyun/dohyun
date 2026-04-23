@@ -91,6 +91,19 @@ export const QueueSchema = z.object({
   tasks: z.array(TaskSchema),
 })
 
+const approvalDecision = z.enum(['approved', 'rejected'])
+
+export const pendingApprovalSchema = z.object({
+  id: z.string(),
+  taskId: z.string(),
+  dodText: z.string(),
+  requestedAt: z.string(),
+  context: z.string().optional(),
+  decision: approvalDecision.optional(),
+  decidedAt: z.string().optional(),
+  decidedBy: z.string().optional(),
+})
+
 // ─── Type Guards (compile-time check: schema matches interface) ────
 
 type AssertEqual<T, U> = T extends U ? (U extends T ? true : never) : never

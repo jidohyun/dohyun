@@ -86,6 +86,17 @@ export interface QueueState {
   tasks: Task[]
 }
 
+// ─── Pending Approvals ─────────────────────────────────────────────
+
+import type { z } from 'zod'
+import type { pendingApprovalSchema } from './schemas.js'
+
+/**
+ * Out-of-band approval record for `@verify:manual` DoDs under CLAUDECODE=1.
+ * AI sessions cannot self-approve — a human resolves via `dohyun approve` CLI.
+ */
+export type PendingApproval = z.infer<typeof pendingApprovalSchema>
+
 // ─── Runtime Adapter Contract ──────────────────────────────────────
 
 /**
