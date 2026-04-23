@@ -2,7 +2,8 @@ import { mkdir, readdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { writeAtomic } from '../utils/fs.js'
 import { paths } from '../state/paths.js'
-import { now, uuid } from '../utils/time.js'
+import { now } from '../utils/time.js'
+import { SAFE_ID, assertSafeId, newId } from './ids.js'
 import { pendingApprovalSchema } from './schemas.js'
 import type { PendingApproval } from './contracts.js'
 
@@ -18,14 +19,6 @@ interface Decision {
   context?: string
 }
 
-const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/
-
-function assertSafeId(id: string): void {
-  if (!SAFE_ID.test(id)) {
-    throw new Error(`invalid pending-approval id: ${JSON.stringify(id)} (unsafe path segment)`)
-  }
-}
-
 function fileFor(id: string, cwd: string): string {
   assertSafeId(id)
   return resolve(paths.pendingApprovals(cwd), `${id}.json`)
@@ -37,7 +30,7 @@ function isENOENT(err: unknown): boolean {
 
 export async function createPending(input: CreateInput, cwd: string): Promise<PendingApproval> {
   const record: PendingApproval = {
-    id: uuid(),
+    id: newId(),
     taskId: input.taskId,
     dodText: input.dodText,
     requestedAt: now(),

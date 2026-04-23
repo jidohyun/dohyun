@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { createPending, listPending } from './pending-approvals.js'
+import { isAiSession } from './env.js'
 
 /** Deterministic verifier kinds. `manual` requires a recent [evidence] notepad entry. */
 export type VerifyKind = 'test' | 'build' | 'file-exists' | 'grep' | 'manual'
@@ -80,7 +81,7 @@ async function verifyManual(
   taskId?: string,
   dodText?: string,
 ): Promise<VerifyResult> {
-  if (process.env.CLAUDECODE === '1') {
+  if (isAiSession()) {
     return verifyManualViaApprovalQueue(cwd, taskId, dodText)
   }
   console.warn('[dohyun] @verify:manual notepad path is deprecated; will be removed in 0.19')
