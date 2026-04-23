@@ -22,6 +22,10 @@ function fileFor(id: string, cwd: string): string {
   return resolve(paths.pendingApprovals(cwd), `${id}.json`)
 }
 
+function isENOENT(err: unknown): boolean {
+  return !!err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'ENOENT'
+}
+
 export async function createPending(input: CreateInput, cwd: string): Promise<PendingApproval> {
   const record: PendingApproval = {
     id: uuid(),
@@ -40,9 +44,7 @@ export async function readPending(id: string, cwd: string): Promise<PendingAppro
     const raw = await readFile(fileFor(id, cwd), 'utf8')
     return pendingApprovalSchema.parse(JSON.parse(raw))
   } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'ENOENT') {
-      return null
-    }
+    if (isENOENT(err)) return null
     throw err
   }
 }
@@ -53,9 +55,7 @@ export async function listPending(cwd: string): Promise<PendingApproval[]> {
   try {
     entries = await readdir(dir)
   } catch (err: unknown) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === 'ENOENT') {
-      return []
-    }
+    if (isENOENT(err)) return []
     throw err
   }
   const out: PendingApproval[] = []
