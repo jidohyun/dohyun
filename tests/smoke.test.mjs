@@ -137,20 +137,20 @@ test('queue clean removes cancelled tasks', () => {
   }
 })
 
-test('plan load auto-prunes stale cancelled tasks', () => {
+test('plan load preserves stale cancelled tasks (audit history)', () => {
   const dir = freshSandbox()
   try {
-    
     const planPath = join(dir, '.dohyun', 'plans', 'p.md')
     writeFileSync(planPath, '# P\n\n### T1: First (feature)\n- [ ] item\n')
     run(['plan', 'load', planPath], dir)
     run(['cancel'], dir)
 
-    // Second load should wipe the cancelled task.
+    // Second load must NOT wipe the cancelled task — terminal states
+    // are audit records. Use `dohyun queue clean` to prune explicitly.
     run(['plan', 'load', planPath], dir)
     const out = run(['queue', '--all'], dir)
     const cancelledMatches = out.match(/\[-\]/g) || []
-    assert.equal(cancelledMatches.length, 0, 'no cancelled tasks should remain after second plan load')
+    assert.ok(cancelledMatches.length >= 1, 'cancelled tasks survive plan reload')
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

@@ -59,7 +59,7 @@ test('replacePendingTasks: preserves completed tasks', async () => {
   }
 })
 
-test('replacePendingTasks: removes existing pending/in_progress/cancelled', async () => {
+test('replacePendingTasks: removes existing pending/in_progress, preserves cancelled/failed', async () => {
   const dir = sandbox()
   try {
     seedQueue(dir, [
@@ -69,6 +69,11 @@ test('replacePendingTasks: removes existing pending/in_progress/cancelled', asyn
         startedAt: null, completedAt: null,
         createdAt: '2026-04-19T00:00:00Z', updatedAt: '2026-04-19T00:00:00Z' },
       { id: 'p2', title: 'stale cancelled', status: 'cancelled',
+        dod: [], dodChecked: [], type: 'feature',
+        priority: 'normal', description: null, metadata: {},
+        startedAt: null, completedAt: null,
+        createdAt: '2026-04-19T00:00:00Z', updatedAt: '2026-04-19T00:00:00Z' },
+      { id: 'f1', title: 'stale failed', status: 'failed',
         dod: [], dodChecked: [], type: 'feature',
         priority: 'normal', description: null, metadata: {},
         startedAt: null, completedAt: null,
@@ -88,7 +93,10 @@ test('replacePendingTasks: removes existing pending/in_progress/cancelled', asyn
     assert.deepEqual(titles, ['T1-new', 'T2-new', 'T3-new'],
       'all 3 new tasks present — no drop')
     assert.equal(q.tasks.find(t => t.id === 'p1'), undefined, 'old pending gone')
-    assert.equal(q.tasks.find(t => t.id === 'p2'), undefined, 'cancelled gone')
+    // Terminal states (cancelled, failed) are audit records — they
+    // survive plan reload even though they're no longer pending.
+    assert.ok(q.tasks.find(t => t.id === 'p2'), 'cancelled preserved for audit')
+    assert.ok(q.tasks.find(t => t.id === 'f1'), 'failed preserved for audit')
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

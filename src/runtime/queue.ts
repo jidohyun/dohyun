@@ -255,8 +255,11 @@ export async function replacePendingTasks(
     parseTasksReply,
     async () => {
       const queue = await loadQueue(cwd)
+      // "replacePending" = replace only the pending/in_progress segment.
+      // Terminal states (completed, review-pending, cancelled, failed)
+      // are audit records and must survive plan reload.
       const kept = queue.tasks.filter(
-        t => t.status === 'completed' || t.status === 'review-pending',
+        t => t.status !== 'pending' && t.status !== 'in_progress',
       )
       const created: Task[] = tasks.map(t => createTask({
         title: t.title,
