@@ -33,16 +33,19 @@ Hint: `dohyun tidy suggest` for candidates, or append a
       ### T...: <name> (tidy) task to your plan.
 ```
 
-Two paths:
+Three paths:
 
-1. **Run `dohyun tidy suggest`** — scans the last 20 commits, keeps
+1. **`dohyun task start --tidy-ad-hoc "<title>"`** — in-harness recovery.
+   Enqueues a tidy task with empty DoD (you fill it as the structural
+   work reveals itself), reorders it to the head of the pending segment,
+   and dequeues it. Breath counter resets when the tidy completes.
+2. **Run `dohyun tidy suggest`** — scans the last 20 commits, keeps
    `feat*` subjects, prints any touched file over 400 LOC as a tidy
    candidate.
-2. **Append a tidy task** to your active plan file and re-run
-   `dohyun plan load`. Watch out: `plan load` currently resets the
-   pending queue. If you only want to add one task, edit
-   `.dohyun/runtime/queue.json` directly (schema in
-   `src/runtime/schemas.ts`).
+3. **Append a tidy task** to your active plan file and re-run
+   `dohyun plan load`. `plan load` now preserves terminal-state tasks
+   (completed, review-pending, cancelled, failed) — only the
+   pending/in_progress segment is replaced.
 
 ## Troubleshooting
 
@@ -59,10 +62,13 @@ sit after every feature you consider cleared.
 also doesn't stop it. If your chore task is actually a behavior change
 in disguise, change its type. The breath gate can't catch mislabeling.
 
-### Bypass
+### Bypass — none
 
-`DOHYUN_SKIP_BREATH=1 dohyun task start` skips the gate. A WARN entry
-lands in `.dohyun/logs/log.md` with the counter value at bypass time.
+There is **no env escape** for the breath gate. The old
+`DOHYUN_SKIP_BREATH` variable was removed because bypassing is exactly
+the "seed-corn eating" anti-pattern the gate exists to prevent —
+Kent Beck's discipline applies to the operator, not only to the AI.
+Use `--tidy-ad-hoc` (above) as the sanctioned recovery path.
 
 ## Why this exists
 
