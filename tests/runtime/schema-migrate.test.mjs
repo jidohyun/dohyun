@@ -30,7 +30,7 @@ function makeV1Queue() {
   }
 }
 
-test('migrateQueue: v1 data passes through unchanged (identity)', () => {
+test('migrateQueue: v1 data upgrades to current version with fields intact', () => {
   const v1 = makeV1Queue()
   const out = migrateQueue(v1)
   assert.equal(out.version, QUEUE_VERSION)
