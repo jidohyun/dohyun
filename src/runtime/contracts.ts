@@ -53,6 +53,18 @@ export type TaskStatus = 'pending' | 'in_progress' | 'review-pending' | 'complet
 export type TaskPriority = 'low' | 'normal' | 'high' | 'critical'
 export type TaskType = 'feature' | 'tidy' | 'chore' | 'fix'
 
+/**
+ * Per-DoD evidence record attached to a task under schema v2.
+ * dodIndex points back into task.dod[]. commitSha/diffPath are populated
+ * by the auto-commit flow (P1-b-2); judgeResult by the LLM judge (P1-c).
+ */
+export interface EvidenceEntry {
+  dodIndex: number
+  commitSha?: string
+  diffPath?: string
+  judgeResult?: unknown
+}
+
 export interface Task {
   id: string
   title: string
@@ -73,6 +85,10 @@ export interface Task {
    * reasons — older queue.json files may not have it.
    */
   reviewedAt?: string | null
+  /**
+   * v2 (P1-b) — per-DoD evidence records. Optional: v1 tasks never had it.
+   */
+  evidence?: EvidenceEntry[]
   metadata: Record<string, unknown>
 }
 

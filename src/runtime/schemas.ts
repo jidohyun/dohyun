@@ -63,6 +63,19 @@ export const LastRunSchema = z.object({
 
 // ─── Task & Queue Schemas ──────────────────────────────────────────
 
+/**
+ * Evidence entry — the per-DoD record that P1-b (diff snapshot + auto-commit)
+ * and P1-c (LLM judge) attach to a task. `dodIndex` points back into the
+ * task's dod[] array. commitSha/diffPath are populated by the auto-commit
+ * flow; judgeResult is populated once P1-c lands.
+ */
+export const EvidenceEntrySchema = z.object({
+  dodIndex: z.number().int().min(0),
+  commitSha: z.string().optional(),
+  diffPath: z.string().optional(),
+  judgeResult: z.unknown().optional(),
+})
+
 export const TaskSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -78,6 +91,8 @@ export const TaskSchema = z.object({
   completedAt: z.string().nullable(),
   // Optional for older queue.json files written before review gate existed.
   reviewedAt: z.string().nullable().optional(),
+  // v2 (P1-b) — per-DoD evidence records. Optional so v1 tasks still parse.
+  evidence: z.array(EvidenceEntrySchema).optional(),
   metadata: z.record(z.unknown()),
 })
 
