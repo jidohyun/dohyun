@@ -79,19 +79,23 @@ v1 gating은 타임라인이 아닌 가치 우선으로 재평가.
 
 > P1은 단일 plan 아님. **3개 독립 plan**으로 분해하여 각각 실행 후 tidy cycle.
 
-### P1-a: @verify:manual → out-of-band 승인 큐
+### P1-a: @verify:manual → out-of-band 승인 큐 (완료, 2026-04-23)
 
 **왜 먼저**: 가장 큰 cheat hole. 구현 비용도 가장 낮고 다른 작업 unblock.
 
-- [ ] **Cheat 정보 수집 스크립트** (선행) — `.dohyun/logs/`에서 지금까지 AI가 manual DoD를 self-approve한 사례 enumerate. 실증 기반 설계
-- [ ] `.dohyun/pending-approvals/` 디렉토리 schema 정의 — `<id>.json { taskId, dodText, requestedAt, context, approvedAt?, decision? }`
-- [ ] `dohyun approve list | approve <id> | reject <id>` CLI 추가
-- [ ] `pre-write-guard.ts`에 `.dohyun/pending-approvals/*.json`을 AI가 approve 필드 수정하지 못하게 차단
-- [ ] `verify.ts`에서 CLAUDECODE=1 감지 시 manual DoD를 pending으로 전환
-- [ ] Stop hook: pending 있으면 block + 안내 메시지
-- [ ] 기존 Warning 기반 경로는 0.16~0.18 동안 fallback으로 유지 (soft deprecation)
-- [ ] 테스트: CLAUDECODE=1 환경에서 manual check 시도 → pending 생성 확인
-- [ ] `docs/evidence-model.md` 신설 — 설계 이유 명시
+실행 plan: `.dohyun/plans/plan-2026-04-23-p1a-manual-oob-approval.md`. 9개 task + 4개 끼어든 tidy/fix, 총 14 커밋 (T1 research → T2 schema → T3 store → T10 hardening → T4 guard → T5 verify CLAUDECODE → T6 approve CLI → T7 stop hook block → T8 docs → T9 tidy). 테스트 271→294.
+
+라이브 실증: P1-a 코드가 자기 자신의 DoD check를 2회 block (`@verify:manual` 태그 포함된 DoD를 pending으로 전환). T2 reviewer가 실제 결함(중복 id 케이스 누락) 포착해 reject 후 수정. pre-write-guard의 exitCode=1이 Claude Code Edit을 차단 못 하는 cheat hole 발견 — "audit trail + logging" 모델로 scope 재정의.
+
+- [x] **Cheat 정보 수집 스크립트** (선행) — `.dohyun/logs/`에서 지금까지 AI가 manual DoD를 self-approve한 사례 enumerate. 실증 기반 설계
+- [x] `.dohyun/pending-approvals/` 디렉토리 schema 정의 — `<id>.json { taskId, dodText, requestedAt, context, approvedAt?, decision? }`
+- [x] `dohyun approve list | approve <id> | reject <id>` CLI 추가
+- [x] `pre-write-guard.ts`에 `.dohyun/pending-approvals/*.json`을 AI가 approve 필드 수정하지 못하게 차단
+- [x] `verify.ts`에서 CLAUDECODE=1 감지 시 manual DoD를 pending으로 전환
+- [x] Stop hook: pending 있으면 block + 안내 메시지
+- [x] 기존 Warning 기반 경로는 0.16~0.18 동안 fallback으로 유지 (soft deprecation)
+- [x] 테스트: CLAUDECODE=1 환경에서 manual check 시도 → pending 생성 확인
+- [x] `docs/evidence-model.md` 신설 — 설계 이유 명시
 
 **Files**: `src/runtime/verify.ts` `src/runtime/guard.ts` `scripts/approve.ts` `src/runtime/schemas.ts` `docs/evidence-model.md`
 
@@ -99,9 +103,20 @@ v1 gating은 타임라인이 아닌 가치 우선으로 재평가.
 
 **왜 두 번째**: P1-c(judge)의 입력. 인프라 깔아야 judge가 먹을 diff가 존재.
 
-- [ ] **Schema v2 migration 선행** — `task.type` (feature|fix|refactor|tidy|chore), `task.evidence[]` 필드 추가
-- [ ] Migration 테스트: v1 plan 파일 load → v2로 변환 → data loss 없음
-- [ ] **Downgrade 경고**: v2 state를 구버전 CLI가 읽으면 stderr 경고 (schema version field로 감지)
+**P1-b-1 — Schema v2 + evidence field (완료, 2026-04-24):**
+`.dohyun/plans/plan-2026-04-24-p1b1-schema-v2-evidence.md`. QUEUE_VERSION을 2로 bump, `task.evidence[]` 도입, v1→v2 migration + stderr 경고, tidy로 migrateV1toV2 헬퍼 추출. 커밋: `fe397bd` `6515675` `a10a354` `0fc06d7` `c9be389` `5615b92`. 294→313 tests.
+
+**P1-b-2 — diff 스냅샷 + auto-commit (예정):**
+`dohyun dod check` 시 working tree diff를 `.dohyun/evidence/<task>/<dod-hash>.diff`에 저장, auto-commit 생성, `task.evidence[]`에 commitSha/diffPath append.
+
+**P1-b-3 — archive 정책 + escape hatch (예정):**
+completed task의 evidence를 `.dohyun/evidence/archive/`로 이동, 90일 후 삭제, `.gitignore` 추가, `DOHYUN_DOD_NO_COMMIT=1` human-only escape hatch.
+
+원래 DoD 체크리스트 (참고용):
+
+- [x] **Schema v2 migration 선행** — `task.type` (feature|fix|refactor|tidy|chore), `task.evidence[]` 필드 추가
+- [x] Migration 테스트: v1 plan 파일 load → v2로 변환 → data loss 없음
+- [x] **Downgrade 경고**: v2 state를 구버전 CLI가 읽으면 stderr 경고 (schema version field로 감지)
 - [ ] `dohyun dod check` 시 working tree diff 스냅샷 → `.dohyun/evidence/<task>/<dod-hash>.diff` 저장
 - [ ] **Auto-commit 로직**: check 명령이 staged + working change를 `<type>(<scope>): <dod-text first line>` 형식으로 commit
   - type 매핑: task.type + DoD marker로 결정

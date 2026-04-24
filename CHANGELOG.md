@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Out-of-band human approval queue for `@verify:manual`.** Under
+  `CLAUDECODE=1`, manual DoD verification no longer trusts the notepad
+  `[evidence]` line (an AI can write that line itself). The verifier
+  now creates a pending record at `.dohyun/pending-approvals/<id>.json`
+  keyed by `(taskId, dodText)`, and a human resolves it from the shell
+  with `dohyun approve list | <id> | reject <id> --reason "..."`.
+  Repeat calls reuse the existing record id. See
+  [docs/evidence-model.md](docs/evidence-model.md) for the full model.
+- **`dohyun approve` CLI.** New subcommands `list`, `<id>` (approve),
+  `reject <id> [--reason "..."]` write decisions through
+  `writeDecision()` and append an `approval` line to the activity log.
+- **`dohyun doctor` surfaces unresolved pending approvals** alongside
+  hook-registration and state-file checks.
+- **Stop hook blocks session termination** when unresolved approvals
+  exist, ahead of review-pending and DoD-in-progress signals.
+- **Guard signal: `ai-bypass-attempt`.** `detectAiBypass()` fires
+  whenever a write targets `.dohyun/pending-approvals/**` and the
+  pre-write-guard hook logs the attempt. Enforcement model is audit
+  trail + logging; see [docs/evidence-model.md](docs/evidence-model.md)
+  § human-only principle.
+- **Queue schema v2.** `task.evidence[]` is a new optional per-DoD
+  record with `dodIndex`, `commitSha?`, `diffPath?`, and a forward-
+  compatible `judgeResult?` slot for the upcoming LLM judge (P1-c).
+  `migrateQueue` upgrades v1 queues in place on first write and emits
+  a one-time `[dohyun] queue.json upgraded v1 → v2 schema` notice to
+  stderr. v3+ rejected with upgrade hint. `loadQueue` now routes
+  through `migrateQueue` so readers and writers agree on the envelope.
+- **`dohyun analyze-cheat`.** Scans the activity log for
+  `[evidence]` → `dod-check` correlations within 5 minutes, surfacing
+  the real-world pattern that motivated the out-of-band queue. See
+  [docs/research/2026-04-23-manual-cheat-evidence.md](docs/research/2026-04-23-manual-cheat-evidence.md).
+
+### Deprecated
+
+- **`@verify:manual` notepad path.** When `CLAUDECODE` is unset the
+  legacy five-minute notepad window still works, but every call prints
+  a deprecation warning to stderr. The path will be removed in 0.19 —
+  see the timeline table in `docs/evidence-model.md`.
+
+### Internal
+
+- `src/runtime/ids.ts` (`SAFE_ID`, `assertSafeId`, `newId`) consolidates
+  filename-safe id generation and validation.
+- `src/runtime/env.ts` (`isAiSession`) replaces scattered
+  `process.env.CLAUDECODE === '1'` checks.
+- `src/runtime/pending-approvals.ts` rejects path-traversal ids, skips
+  corrupt files in `listPending`, and sorts output by `requestedAt`.
+- `src/runtime/guard.ts` gained `detectDangerousWrite()` — the
+  previously-inline pattern list from the hook is now a named detector
+  alongside loop/scope-creep/cheat/ai-bypass.
+- `src/runtime/migrate.ts` extracted `migrateV1toV2()` helper; the
+  dispatcher is now a flat decision tree.
+
 ## [0.15.0] - 2026-04-23
 
 This release turns the core "philosophy" documents into runtime

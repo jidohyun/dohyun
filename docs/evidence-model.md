@@ -113,3 +113,35 @@ only the CLI path runs under the human's shell context).
 If forgery is ever observed in the wild, the next hardening step is to
 sign decisions with a key that lives outside the repository (planned
 under P1-b and P1-c in the roadmap, once the judge layer lands).
+
+## (f) Schema v2 — `task.evidence[]`
+
+Introduced in 0.16 (P1-b-1). Every task now carries an optional
+`evidence: EvidenceEntry[]` array, one entry per DoD that recorded
+machine-verifiable artefacts. The shape:
+
+```ts
+interface EvidenceEntry {
+  dodIndex: number        // index into task.dod[]
+  commitSha?: string      // auto-commit hash (P1-b-2)
+  diffPath?: string       // .dohyun/evidence/<task>/<dod-hash>.diff (P1-b-2)
+  judgeResult?: unknown   // LLM judge output (P1-c)
+}
+```
+
+`dodIndex` is required and non-negative; every other field is optional
+because it is populated incrementally as each evidence layer lands —
+the auto-commit flow in P1-b-2 will fill `commitSha` and `diffPath`,
+and the LLM judge in P1-c will fill `judgeResult`.
+
+The out-of-band pending-approval record in sections (a)–(e) is orthogonal
+to this field: pending-approvals live in `.dohyun/pending-approvals/` and
+cover `@verify:manual` decisions, while `task.evidence[]` covers every
+DoD that has auto-committed diff evidence.
+
+**Migration.** `migrateQueue` handles v1 → v2 by bumping the envelope
+version without touching any task — v1 tasks simply have no `evidence`
+array, which v2 accepts (`evidence?: EvidenceEntry[]`). The first write
+after an upgrade emits a single `[dohyun] queue.json upgraded v1 → v2
+schema` line on stderr. v3+ is rejected with an upgrade hint so a
+mismatched state never silently loads.
