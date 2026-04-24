@@ -2,6 +2,7 @@ import type { Task, TaskPriority, TaskStatus, TaskType, QueueState } from './con
 import { readJson, writeJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { now, uuid } from '../utils/time.js'
+import { QUEUE_VERSION, migrateQueue } from './migrate.js'
 import { createDefaultDaemonClient } from './daemon-factory.js'
 import {
   viaDaemon,
@@ -34,8 +35,16 @@ function createTask(
 }
 
 async function loadQueue(cwd?: string): Promise<QueueState> {
-  return await readJson<QueueState>(paths.queue(cwd))
-    ?? { version: 1, tasks: [] }
+  const raw = await readJson<unknown>(paths.queue(cwd))
+  if (raw === null) return { version: QUEUE_VERSION, tasks: [] }
+  try {
+    return migrateQueue(raw)
+  } catch {
+    // Corrupt / unsupported version — treat as empty queue. readQueue has
+    // the same policy; diverging here would let mutators silently overwrite
+    // data the reader refused to load.
+    return { version: QUEUE_VERSION, tasks: [] }
+  }
 }
 
 async function writeQueueWith(

@@ -15,7 +15,7 @@
 
 import type { QueueState } from './contracts.js'
 
-export const QUEUE_VERSION = 1
+export const QUEUE_VERSION = 2
 
 interface VersionedInput {
   version: number
@@ -51,7 +51,12 @@ export function migrateQueue(raw: unknown): QueueState {
     )
   }
 
-  // Future: handle v1 → v2 here.  For now any other number is rejected
-  // so stale/corrupt state cannot silently load.
+  if (input.version === 1) {
+    // v1 → v2: task.evidence[] is new and optional, so no per-task rewrite
+    // is needed. Just bump the envelope version. Tasks pass through as-is
+    // and zod validation downstream accepts either shape.
+    return { ...(raw as Record<string, unknown>), version: 2 } as unknown as QueueState
+  }
+
   throw new Error(`queue version ${input.version} is unknown to this build`)
 }
