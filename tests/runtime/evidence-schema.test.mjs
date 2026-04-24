@@ -67,6 +67,12 @@ test('TaskSchema: evidence is optional (v1 tasks still parse)', () => {
   assert.equal(parsed.evidence, undefined)
 })
 
+test('TaskSchema: evidence empty array is accepted (fresh v2 task)', () => {
+  const parsed = TaskSchema.parse({ ...baseTask, evidence: [] })
+  assert.ok(Array.isArray(parsed.evidence))
+  assert.equal(parsed.evidence.length, 0)
+})
+
 test('TaskSchema: evidence array is accepted', () => {
   const parsed = TaskSchema.parse({
     ...baseTask,
