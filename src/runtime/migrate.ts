@@ -55,6 +55,7 @@ export function migrateQueue(raw: unknown): QueueState {
     // v1 → v2: task.evidence[] is new and optional, so no per-task rewrite
     // is needed. Just bump the envelope version. Tasks pass through as-is
     // and zod validation downstream accepts either shape.
+    console.warn('[dohyun] queue.json upgraded v1 → v2 schema')
     return { ...(raw as Record<string, unknown>), version: 2 } as unknown as QueueState
   }
 
