@@ -25,10 +25,10 @@
 | 칸 | 카드 수 |
 |---|---|
 | 🔥 Now | 0 |
-| 🟢 Next | 8 |
+| 🟢 Next | 3 |
 | 💤 Later | 17 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 26+ |
+| ✅ Done | 27+ |
 | ❌ Dropped | 3 |
 
 ---
@@ -40,13 +40,6 @@
 ---
 
 ## 3. Next (즉시 시작 가능)
-
-### M2.4 — `scripts/validate.sh` 단일 진입점
-- 🟢 `M2.4.a` (P1) — `scripts/validate.sh` typecheck && lint && test 순차
-- 🟢 `M2.4.b` (P2) — 부분 실패 시 끊긴 지점 출력
-- 🟢 `M2.4.c` (P2) — `dohyun validate` CLI 래퍼
-- 🟢 `M2.4.d` (P1) — `package.json` 에 `lint` / `typecheck` 추가
-- 🟢 `M2.4.e` (P2) — `AGENT.md 4` 에 명시
 
 ### M2.5 — Breath × phase marker 통합
 - 🟢 `M2.5.a` (P1) — 최근 N 커밋 phase marker 기반 inhale 카운트
@@ -113,8 +106,9 @@
 
 ### M2 — Commit 규율 하네스화 (land 분량)
 - ✅ `M2.1.a~c` — commit-msg hook + CLI + 단위 테스트 (commit 5b6f3f0)
-- ✅ `M2.2.a~b` — `dohyun setup` 멱등 설치 + chain
-- ✅ `M2.3.a~b` — `[red]` advisory + 단위 테스트
+- ✅ `M2.2.a~b` — `dohyun setup` 멱등 설치 + chain (commit 5b6f3f0)
+- ✅ `M2.3.a~b` — `[red]` advisory + 단위 테스트 (commit 5b6f3f0)
+- ✅ `M2.4.a~e` — `scripts/validate.sh` + npm `typecheck`/`lint`/`validate` (commit 927281c)
 
 ---
 

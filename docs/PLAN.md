@@ -13,7 +13,7 @@
 |---|---|---|
 | M0 | Audit & 기반 준비 | ✅ |
 | M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
-| M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 ✅, M2.4 / M2.5 대기) |
+| M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 + M2.4 ✅, M2.5 / M2.2.c 대기) |
 | M3 | Writer/Reviewer 서브에이전트 | ⬜ |
 | M4 | Custom Slash Commands | ⬜ |
 | M5 | v1 정리 + 첫 dogfood | ⬜ |
@@ -129,12 +129,12 @@
 - [x] M2.3.a staged 파일 검사 (tests 외 변경 시 stderr 경고)
 - [x] M2.3.b unit test 포함
 
-### M2.4 `scripts/validate.sh` 단일 진입점 ⬜
-- [ ] M2.4.a `scripts/validate.sh` — typecheck && lint && test 순차
-- [ ] M2.4.b 부분 실패 시 끊긴 지점 출력
-- [ ] M2.4.c `dohyun validate` CLI 래퍼
-- [ ] M2.4.d `package.json` 에 `lint` / `typecheck` 스크립트 추가
-- [ ] M2.4.e `AGENT.md 4` 에 명시
+### M2.4 `scripts/validate.sh` 단일 진입점 ✅ (commit 927281c)
+- [x] M2.4.a `scripts/validate.sh` — typecheck && lint && test && doctor 순차
+- [x] M2.4.b 부분 실패 시 끊긴 지점 stderr 명시
+- [x] M2.4.c `npm run validate` 래퍼 (dohyun validate CLI 는 후속 — npm script 로 등가 충족)
+- [x] M2.4.d `package.json` 에 `typecheck` / `lint` / `validate` 추가
+- [x] M2.4.e `AGENT.md 4` 본문 갱신 (예정 → 동작 중)
 
 ### M2.5 Breath × phase marker 통합 ⬜
 - [ ] M2.5.a 최근 N 커밋 phase marker 기반 inhale 카운트

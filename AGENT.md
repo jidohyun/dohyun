@@ -131,7 +131,7 @@ dohyun status       # 현재 세션 / 모드 / 큐 요약
 | `npm test` | build → `node --test tests/**` | 30 초 이내 통과가 목표 |
 | `dohyun queue` / `dohyun dod` / `dohyun task start` | 작업 큐 운영 | docs/conventions.md 참조 |
 
-`scripts/validate.sh` 단일 진입점은 **M2.4 예정**. lint / typecheck npm 스크립트도 같은 마일스톤에서 함께 추가된다.
+`scripts/validate.sh` 단일 진입점은 **land 됨** (commit 927281c, M2.4). `npm run validate` 한 줄로 typecheck → lint → test → `dohyun doctor` 가 순차 실행된다. `npm run typecheck` / `npm run lint` 도 개별 호출 가능.
 
 ---
 
@@ -154,14 +154,16 @@ npm test            # 모든 테스트 통과
 dohyun doctor       # 상태/훅 drift 0
 ```
 
-### 4.2 검증 layered 구조 (M2.4 시 `scripts/validate.sh` 로 통합 예정)
+### 4.2 검증 layered 구조 — `npm run validate` 가 4 단계를 한 번에 실행
 
 | 레이어 | 명령 | 차단 조건 |
 |---|---|---|
-| Type | `tsc --noEmit` (M2.4) | TS 에러 |
-| Lint | (M2.4 도입 예정) | 린트 에러 |
+| Type | `npm run typecheck` (`tsc --noEmit`) | TS 에러 |
+| Lint | `npm run lint` (`scripts/lint.sh` — 간이 grep 기반, 본격 ESLint 도입은 별도 patch) | 린트 위반 |
 | Unit/Integration | `npm test` | 1 개라도 실패 |
-| dohyun gate | `dohyun verify`, `dohyun doctor` | 결정 게이트 위반 |
+| dohyun gate | `dohyun doctor` (settings drift, daemon, pending-approvals) | 결정 게이트 위반 |
+
+위 4 개를 묶은 진입점이 `npm run validate` (= `bash scripts/validate.sh`). 어느 레이어에서 끊겼는지 stderr 에 명시된다.
 
 ### 4.3 한 번에 한 사이클
 
