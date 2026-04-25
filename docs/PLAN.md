@@ -12,7 +12,7 @@
 | 마일스톤 | 제목 | 상태 |
 |---|---|---|
 | M0 | Audit & 기반 준비 | ✅ |
-| M1 | 문서 골격 재편 | 🟨 진행중 (M1.1 ~ M1.6 land 중) |
+| M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
 | M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 ✅, M2.4 / M2.5 대기) |
 | M3 | Writer/Reviewer 서브에이전트 | ⬜ |
 | M4 | Custom Slash Commands | ⬜ |

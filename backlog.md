@@ -25,10 +25,10 @@
 | 칸 | 카드 수 |
 |---|---|
 | 🔥 Now | 0 |
-| 🟢 Next | 12 |
+| 🟢 Next | 8 |
 | 💤 Later | 17 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 22+ |
+| ✅ Done | 26+ |
 | ❌ Dropped | 3 |
 
 ---
@@ -40,12 +40,6 @@
 ---
 
 ## 3. Next (즉시 시작 가능)
-
-### M1.6 — 계층적 AGENT.md
-- 🟢 `M1.6.a` (P1) — `src/AGENT.md` 신설 — runtime/state/cli 책임 표 + no as/any/mutation
-- 🟢 `M1.6.b` (P1) — `tests/AGENT.md` 신설 — TDD Red 먼저 + cheating 금지
-- 🟢 `M1.6.c` (P1) — `docs/AGENT.md` 신설 — 결정 ID 참조 의무
-- 🟢 `M1.6.d` (P1) — `.dohyun/AGENT.md` 신설 — AI 직접 편집 금지
 
 ### M2.4 — `scripts/validate.sh` 단일 진입점
 - 🟢 `M2.4.a` (P1) — `scripts/validate.sh` typecheck && lint && test 순차
@@ -109,12 +103,13 @@
 - ✅ `M0.2.a~d` — chazm 12 섹션 / CLAUDE 래퍼 / commit-msg / 서브에이전트 매핑
 - ✅ `M0.3.a~d` — Hot cache 보류 / fix +1 / code-path 인용 / `infra` drop
 
-### M1 — 문서 골격 재편 (진행 중 land 분량)
+### M1 — 문서 골격 재편 (✅ 완료)
 - ✅ `M1.1.a~l` — `AGENT.md` 12 장 신설 (commit 87a8d63)
 - ✅ `M1.2.a~k` — `CLAUDE.md` 얇은 래퍼 (commit 5bcdec4)
 - ✅ `M1.3.a~h` — `docs/SYSTEM-DESIGN.md` 신설 (commit b45a962)
-- ✅ `M1.4.a~e` — `docs/PLAN.md` 신설 (이 commit)
-- ✅ `M1.5.a~k` — `backlog.md` 신설 (이 commit)
+- ✅ `M1.4.a~e` — `docs/PLAN.md` 신설 (commit 813103a)
+- ✅ `M1.5.a~k` — `backlog.md` 신설 (commit 813103a)
+- ✅ `M1.6.a~d` — 계층 `AGENT.md` 4 종 (`src` / `tests` / `docs` / `.dohyun`) (commit beaee7e)
 
 ### M2 — Commit 규율 하네스화 (land 분량)
 - ✅ `M2.1.a~c` — commit-msg hook + CLI + 단위 테스트 (commit 5b6f3f0)
