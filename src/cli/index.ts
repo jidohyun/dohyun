@@ -115,6 +115,11 @@ async function main() {
       await runApprove(args, workDir)
       break
     }
+    case 'hook': {
+      const { runHook } = await import('../../scripts/hook.js')
+      const code = await runHook(args)
+      exit(code)
+    }
     case 'daemon': {
       const { runDaemon } = await import('../../scripts/daemon.js')
       const [sub, ...rest] = args

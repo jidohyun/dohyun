@@ -102,9 +102,56 @@ export async function runSetup(cwd: string, opts: SetupOptions = {}): Promise<vo
   // Install Claude Code integration (.claude/settings.json + skills + commands)
   await installClaudeIntegration(cwd, opts)
 
+  // Install git commit-msg hook (M2.2 — phase marker enforcement, AGENT.md 9)
+  await installGitCommitMsgHook(cwd)
+
   await maybeHintTypeModule(cwd)
 
   console.log('\nSetup complete.')
+}
+
+async function installGitCommitMsgHook(cwd: string): Promise<void> {
+  const { resolve, join } = await import('node:path')
+  const { readFile, writeFile, mkdir, chmod } = await import('node:fs/promises')
+
+  const gitDir = resolve(cwd, '.git')
+  if (!(await fileExists(gitDir))) {
+    console.log('  Git hook: skipped (not a git repository)')
+    return
+  }
+
+  const hooksDir = join(gitDir, 'hooks')
+  await mkdir(hooksDir, { recursive: true })
+
+  const hookPath = join(hooksDir, 'commit-msg')
+  const marker = '# dohyun-commit-msg-hook'
+  const dohyunInvocation = 'exec dohyun hook commit-msg "$1"'
+  const hookBody = [
+    '#!/usr/bin/env bash',
+    marker,
+    '# Installed by `dohyun setup`. Validates AGENT.md 9 phase marker.',
+    '# Idempotent: safe to re-run setup. Removing dohyun = remove this file or strip marker block.',
+    'set -e',
+    dohyunInvocation,
+    '',
+  ].join('\n')
+
+  if (await fileExists(hookPath)) {
+    const existing = await readFile(hookPath, 'utf-8')
+    if (existing.includes(marker)) {
+      console.log('  Git hook: commit-msg already installed (skip)')
+      return
+    }
+    const chained = existing.trimEnd() + '\n\n' + marker + '\n' + dohyunInvocation + '\n'
+    await writeFile(hookPath, chained, 'utf-8')
+    await chmod(hookPath, 0o755)
+    console.log('  Git hook: chained dohyun commit-msg into existing hook')
+    return
+  }
+
+  await writeFile(hookPath, hookBody, 'utf-8')
+  await chmod(hookPath, 0o755)
+  console.log(`  Git hook: installed commit-msg → ${hookPath}`)
 }
 
 async function maybeHintTypeModule(cwd: string): Promise<void> {
