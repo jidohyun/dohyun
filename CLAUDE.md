@@ -49,15 +49,21 @@ Kent Beck *Augmented Coding* (2025-06-25):
 
 ### D.2 3 종 서브에이전트 (override)
 
-`.claude/agents/` 에 dohyun 전용 에이전트 3 종을 둔다 (M3 — 정의는 `docs/PLAN.md M3` 참조). 글로벌 에이전트보다 **이 저장소의 정의가 우선** 한다.
+`.claude/agents/` (저장소 로컬) 에 dohyun 전용 에이전트 3 종을 둔다 — 정의는 `M3.1~M3.3` (commit `db8fb06`).
+
+**우선순위 (Claude Code 동작)**: subagent 이름 충돌 시 *프로젝트 로컬 정의가 user-global (`~/.claude/agents/`) 정의를 override* 한다. 따라서 사용자가 글로벌에 `planner` / `implementer` / `verifier` 같은 일반 이름의 에이전트를 둬도 본 저장소에서는 `dohyun-planner` / `dohyun-implementer` / `dohyun-verifier` (이름이 `dohyun-` prefix 라 충돌 자체가 없게 설계) 가 사용된다.
 
 | 에이전트 | model | tools | 용도 |
 |---|---|---|---|
 | `dohyun-planner` | opus | read-only (`Read, Grep, Glob, AskUserQuestion`) | 계획·결정 ID 추적·Invariants 셀프체크 |
 | `dohyun-implementer` | sonnet | full (`Read, Write, Edit, Grep, Glob, Bash`) | TDD × Tidy First 실행, 한 번에 한 task |
-| `dohyun-verifier` | opus | read-only Bash (`Read, Grep, Glob, Bash`) | AGENT.md 4 + 10 자동 점검, PASS/FAIL/CRITICAL 판정 |
+| `dohyun-verifier` | opus | read-only Bash (`Read, Grep, Glob, Bash`) | AGENT.md 4 + 10 자동 점검, PASS/PASS-w-warning/FAIL/CRITICAL_FAIL 판정 |
 
-> 자동 라우팅이 필요하면 description 에 PROACTIVELY 호출 조건을 기재한다.
+**Writer/Reviewer 분리**: implementer 와 verifier 는 다른 컨텍스트에서 동작 — verifier 는 implementer 가 막 작성한 코드에 편향되지 않은 시야 (Anthropic 권장). `dohyun review run <id>` 출력의 verifier banner 가 메인 세션에 spawn 명령을 안내하며, 판정은 `dohyun review approve|reject --verifier-judgment <verdict>` 로 `.dohyun/reviews/<id>.json` 에 영속화된다 (M3.4).
+
+자동 라우팅이 필요하면 description 에 PROACTIVELY 호출 조건을 기재한다.
+
+> **실증 메모 (M3.5.b)**: 본 우선순위는 Claude Code 의 공식 문서 / 실제 spawn 동작에서 재차 확인이 필요. 본 저장소는 `dohyun-` prefix 로 충돌 자체를 회피했으므로 우선순위가 실패해도 안전 — 실증은 v1 직전 dogfood (M5.2) 과정에서 자연스럽게 누적된다.
 
 ### D.3 `@import` 규약
 
