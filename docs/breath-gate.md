@@ -10,6 +10,7 @@ completes.
 | Completed task type | `featuresSinceTidy` |
 |---------------------|---------------------|
 | `feature` | +1 |
+| `fix` | +1 |
 | `chore` | unchanged |
 | `tidy` | reset to 0 |
 

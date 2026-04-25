@@ -70,4 +70,4 @@ Current implementation: `NodeRuntime` in `node-runtime.ts`.
 - **Zod schemas mirror TypeScript interfaces**: compile-time type check via `z.infer<>`
 - **Atomic writes**: tmp file + rename prevents corruption
 - **Append-only log**: `.dohyun/logs/log.md` for audit trail
-- **Hot cache**: `.dohyun/memory/hot.md` for session continuity (~500 words)
+- **Hot cache**: `.dohyun/memory/hot.md` for session continuity (planned, unit TBD)
