@@ -25,10 +25,10 @@
 | 칸 | 카드 수 |
 |---|---|
 | 🔥 Now | 0 |
-| 🟢 Next | 10 |
+| 🟢 Next | 6 |
 | 💤 Later | 9 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 30+ |
+| ✅ Done | 35+ |
 | ❌ Dropped | 3 |
 
 ---
@@ -41,12 +41,9 @@
 
 ## 3. Next (즉시 시작 가능)
 
-### M3 — review-gate 재배선 + override 문서화
-- 🟢 `M3.4.a` (P1) — `scripts/review.ts` 의 `dohyun review run <id>` 가 dohyun-verifier 서브에이전트를 명시 spawn
-- 🟢 `M3.4.b` (P1) — verifier 판정을 `.dohyun/reviews/<id>.json` 에 저장
-- 🟢 `M3.4.c` (P2) — Stop hook 이 판정 없이 review-pending 종료 시 재주입
-- 🟢 `M3.5.a` (P2) — `AGENT.md D.2` 우선순위 명시 (`.claude/agents/` > 글로벌)
-- 🟢 `M3.5.b` (P3) — 우선순위 실증 (e2e)
+### M3 — review-gate 후속
+- 🟢 `M3.4.c` (P2) — Stop hook 이 verifier 판정 없이 review-pending 종료 시 재주입 (`stop-continue.ts` 변경)
+- 🟢 `M3.5.b` (P3) — agent override 우선순위 실증 (M5.2 dogfood 시 자연스럽게 누적)
 
 ### M2.5 — Breath × phase marker 통합
 - 🟢 `M2.5.a` (P1) — 최근 N 커밋 phase marker 기반 inhale 카운트
@@ -114,6 +111,8 @@
 - ✅ `M3.1.a~b` — `.claude/agents/dohyun-planner.md` (read-only, opus) (commit db8fb06)
 - ✅ `M3.2.a~c` — `.claude/agents/dohyun-implementer.md` (sonnet, full tools, TDD + Tidy First) (commit db8fb06)
 - ✅ `M3.3.a~c` — `.claude/agents/dohyun-verifier.md` (read-only Bash, opus, 4 단 판정) (commit db8fb06)
+- ✅ `M3.4.a~b` — `dohyun review run` verifier banner + `--verifier-judgment` 영속화 (commit 76a750c)
+- ✅ `M3.5.a` — CLAUDE.md D.2 agent override 우선순위 명시 (commit b1bf9c4)
 
 ---
 

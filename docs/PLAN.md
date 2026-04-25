@@ -14,7 +14,7 @@
 | M0 | Audit & 기반 준비 | ✅ |
 | M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
 | M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 + M2.4 ✅, M2.5 / M2.2.c 대기) |
-| M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1+M3.2+M3.3 ✅, M3.4/M3.5 대기) |
+| M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1+M3.2+M3.3 ✅, M3.4.a+b ✅ + M3.5.a ✅, M3.4.c+M3.5.b 대기) |
 | M4 | Custom Slash Commands | ⬜ |
 | M5 | v1 정리 + 첫 dogfood | ⬜ |
 
@@ -161,14 +161,14 @@
 - [x] M3.3.b `AGENT.md 4` + `10` 자동 점검
 - [x] M3.3.c PASS / PASS-with-warning / FAIL / CRITICAL 판정 출력 스키마
 
-### M3.4 review-gate 재배선
-- [ ] M3.4.a `dohyun review run <id>` → verifier 서브에이전트 명시 spawn
-- [ ] M3.4.b verifier 판정을 `.dohyun/reviews/<id>.json` 에 저장
-- [ ] M3.4.c Stop hook 이 판정 없이 review-pending 종료 시 재주입
+### M3.4 review-gate 재배선 🟨 (a+b ✅ commit 76a750c)
+- [x] M3.4.a `dohyun review run <id>` 출력에 verifier banner + footer prepend
+- [x] M3.4.b `dohyun review approve|reject --verifier-judgment <verdict>` → `.dohyun/reviews/<id>.json` 영속화
+- [ ] M3.4.c Stop hook 이 판정 없이 review-pending 종료 시 재주입 (후속)
 
-### M3.5 Global agent override 문서화
-- [ ] M3.5.a `AGENT.md D.2` 우선순위 명시 (`.claude/agents/` 가 글로벌보다 우선)
-- [ ] M3.5.b 우선순위 실증 (e2e 테스트)
+### M3.5 Global agent override 문서화 🟨 (a ✅ commit b1bf9c4)
+- [x] M3.5.a `CLAUDE.md D.2` 우선순위 명시 + Writer/Reviewer 분리 메모 추가
+- [ ] M3.5.b 우선순위 실증 (M5.2 dogfood 과정에서 누적)
 
 ---
 
