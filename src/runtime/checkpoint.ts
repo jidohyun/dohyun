@@ -60,6 +60,15 @@ export function evaluateCheckpoint(
         '[dohyun checkpoint] Review required',
         ...continuationInfo.reviewPendingIds.map(id => `  - dohyun review run ${id}`),
       ]
+      const awaiting = continuationInfo.awaitingVerifierIds ?? []
+      if (awaiting.length > 0) {
+        lines.unshift(
+          '[dohyun checkpoint] Verifier judgment required',
+          'spawn dohyun-verifier subagent, then record the verdict via:',
+          ...awaiting.map(id => `  - dohyun review approve ${id} --verifier-judgment <PASS|PASS with warning|FAIL|CRITICAL_FAIL>`),
+          '',
+        )
+      }
       return { type: 'continue', reason: prependAiSignalsBanner(lines.join('\n'), aiSignals) }
     }
     if (continuationInfo.pendingCount > 0) {

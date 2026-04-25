@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { readJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
 import { listPending } from './pending-approvals.js'
@@ -35,7 +37,28 @@ export interface ContinuationInfo {
   currentTask: string | null
   pendingCount: number
   reviewPendingIds: string[]
+  /**
+   * Subset of reviewPendingIds whose `.dohyun/reviews/<id>.json`
+   * does NOT yet carry a `verifierJudgment`. M3.4.c — the Stop hook
+   * uses this to re-inject a verifier-spawn banner so the next turn
+   * runs the dohyun-verifier subagent before approving.
+   */
+  awaitingVerifierIds: string[]
   unresolvedApprovals: number
+}
+
+function lacksVerifierJudgment(taskId: string, cwd?: string): boolean {
+  // Invariant #7 (hooks deterministic, silent on failure): any I/O error
+  // here degrades to "judgment present" — never throws into the Stop hook.
+  try {
+    const filePath = resolve(paths.root(cwd), 'reviews', `${taskId}.json`)
+    if (!existsSync(filePath)) return true
+    const raw = readFileSync(filePath, 'utf8')
+    const parsed = JSON.parse(raw) as { verifierJudgment?: unknown }
+    return typeof parsed.verifierJudgment !== 'string' || parsed.verifierJudgment.length === 0
+  } catch {
+    return false
+  }
 }
 
 export async function getContinuationInfo(cwd?: string): Promise<ContinuationInfo> {
@@ -54,6 +77,7 @@ export async function getContinuationInfo(cwd?: string): Promise<ContinuationInf
   ) ?? []
 
   const reviewPendingIds = queue?.tasks.filter(t => t.status === 'review-pending').map(t => t.id) ?? []
+  const awaitingVerifierIds = reviewPendingIds.filter(id => lacksVerifierJudgment(id, cwd))
   const unresolvedApprovals = approvals.filter(p => !p.decision).length
   const shouldContinue = activeTask !== null
     || pendingTasks.length > 0
@@ -77,6 +101,7 @@ export async function getContinuationInfo(cwd?: string): Promise<ContinuationInf
     currentTask: activeTask?.title ?? null,
     pendingCount: pendingTasks.length,
     reviewPendingIds,
+    awaitingVerifierIds,
     unresolvedApprovals,
   }
 }
