@@ -12,6 +12,7 @@ const defaultContinuation = {
   reason: '',
   pendingCount: 0,
   reviewPendingIds: [],
+  awaitingVerifierIds: [],
 }
 
 function makeTask(overrides = {}) {
@@ -99,6 +100,33 @@ test('evaluateCheckpoint: chore DoD incomplete → continue', () => {
 test('evaluateCheckpoint: no task → done', () => {
   const result = evaluateCheckpoint(null, defaultContinuation)
   assert.equal(result.type, 'done')
+})
+
+// --- M3.4.c: review-pending verifier-judgment re-injection ---
+
+test('evaluateCheckpoint: review-pending without verifier judgment → continue with verifier banner', () => {
+  const continuation = {
+    ...defaultContinuation,
+    reviewPendingIds: ['task-42'],
+    awaitingVerifierIds: ['task-42'],
+  }
+  const result = evaluateCheckpoint(null, continuation)
+  assert.equal(result.type, 'continue')
+  assert.match(result.reason, /verifier/i)
+  assert.match(result.reason, /dohyun-verifier/)
+  assert.match(result.reason, /dohyun review approve task-42 --verifier-judgment/)
+})
+
+test('evaluateCheckpoint: review-pending with verifier judgment recorded → no verifier banner', () => {
+  const continuation = {
+    ...defaultContinuation,
+    reviewPendingIds: ['task-42'],
+    awaitingVerifierIds: [],
+  }
+  const result = evaluateCheckpoint(null, continuation)
+  assert.equal(result.type, 'continue')
+  assert.doesNotMatch(result.reason, /spawn dohyun-verifier/)
+  assert.match(result.reason, /dohyun review run task-42/)
 })
 
 // --- "Feature" hardcode check ---
