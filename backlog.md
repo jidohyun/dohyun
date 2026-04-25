@@ -24,8 +24,8 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 0 |
-| 🟢 Next | 6 |
+| 🔥 Now | 1 |
+| 🟢 Next | 5 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
 | ✅ Done | 38+ |
@@ -35,14 +35,13 @@
 
 ## 2. Now (WIP ≤ 3)
 
-비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
+- 🔥 `M3.4.c` (P2) — Stop hook 이 verifier 판정 없이 review-pending 종료 시 재주입 (`stop-continue.ts` 변경) — promoted 2026-04-25 (v2 첫 dogfood)
 
 ---
 
 ## 3. Next (즉시 시작 가능)
 
 ### M3 — review-gate 후속
-- 🟢 `M3.4.c` (P2) — Stop hook 이 verifier 판정 없이 review-pending 종료 시 재주입 (`stop-continue.ts` 변경)
 - 🟢 `M3.5.b` (P3) — agent override 우선순위 실증 (M5.2 dogfood 시 자연스럽게 누적)
 
 ### M2.5 — Breath × phase marker 통합
