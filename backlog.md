@@ -1,0 +1,177 @@
+# backlog.md — dohyun 칸반 (PLAN.md 의 상태 view)
+
+> 본 파일은 `docs/PLAN.md` 가 정의한 task ID 들의 **상태** 를 추적한다. ID 자체를 새로 만들지 않는다.
+> PLAN.md 와 어긋나면 PLAN 이 우선이며 backlog 가 sync 되어야 한다.
+> 매 task 카드는 `M*.*.x` 백틱 ID + 우선순위 라벨 `(Pn)` + 한 줄 설명을 갖는다.
+
+## 0. 사용법 + 아이콘 범례
+
+| 아이콘 | 의미 |
+|---|---|
+| 🔥 | Now (in_progress) — WIP 한도 3 |
+| 🟢 | Next (즉시 시작 가능) |
+| 💤 | Later (의존성/순서 대기) |
+| 🚧 | Blocked |
+| ✅ | Done |
+| ❌ | Dropped |
+
+작업 시작 = Next → Now 로 promote (`/dohyun:backlog-start` 가 자동화 예정 — M4.1).
+작업 완료 = Now → Done 으로 이동 + commit hash 라인 첨부.
+
+---
+
+## 1. Snapshot
+
+| 칸 | 카드 수 |
+|---|---|
+| 🔥 Now | 0 |
+| 🟢 Next | 12 |
+| 💤 Later | 17 |
+| 🚧 Blocked | 0 |
+| ✅ Done | 22+ |
+| ❌ Dropped | 3 |
+
+---
+
+## 2. Now (WIP ≤ 3)
+
+비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
+
+---
+
+## 3. Next (즉시 시작 가능)
+
+### M1.6 — 계층적 AGENT.md
+- 🟢 `M1.6.a` (P1) — `src/AGENT.md` 신설 — runtime/state/cli 책임 표 + no as/any/mutation
+- 🟢 `M1.6.b` (P1) — `tests/AGENT.md` 신설 — TDD Red 먼저 + cheating 금지
+- 🟢 `M1.6.c` (P1) — `docs/AGENT.md` 신설 — 결정 ID 참조 의무
+- 🟢 `M1.6.d` (P1) — `.dohyun/AGENT.md` 신설 — AI 직접 편집 금지
+
+### M2.4 — `scripts/validate.sh` 단일 진입점
+- 🟢 `M2.4.a` (P1) — `scripts/validate.sh` typecheck && lint && test 순차
+- 🟢 `M2.4.b` (P2) — 부분 실패 시 끊긴 지점 출력
+- 🟢 `M2.4.c` (P2) — `dohyun validate` CLI 래퍼
+- 🟢 `M2.4.d` (P1) — `package.json` 에 `lint` / `typecheck` 추가
+- 🟢 `M2.4.e` (P2) — `AGENT.md 4` 에 명시
+
+### M2.5 — Breath × phase marker 통합
+- 🟢 `M2.5.a` (P1) — 최근 N 커밋 phase marker 기반 inhale 카운트
+- 🟢 `M2.5.b` (P1) — tidy 요구 시 다음 커밋이 `[structural]`/`[refactor]` 여야 해제
+- 🟢 `M2.5.c` (P2) — task.type 경로 fallback 유지
+
+### M2.2 — 잔여
+- 🟢 `M2.2.c` (P2) — `dohyun doctor` 의 hook drift 감지
+
+---
+
+## 4. Later
+
+### M3 — Writer / Reviewer 서브에이전트
+- 💤 `M3.1.a~b` (P1) — `dohyun-planner` 정의
+- 💤 `M3.2.a~c` (P1) — `dohyun-implementer` 정의
+- 💤 `M3.3.a~c` (P1) — `dohyun-verifier` 정의
+- 💤 `M3.4.a~c` (P1) — review-gate 재배선
+- 💤 `M3.5.a~b` (P2) — Global agent override 문서화
+
+### M4 — Custom Slash Commands
+- 💤 `M4.1` (P2) — `/dohyun:backlog-start`
+- 💤 `M4.2` (P2) — `/dohyun:commit-lore`
+- 💤 `M4.3` (P2) — `/dohyun:validate`
+- 💤 `M4.4` (P3) — 상태 가시성 alias 확장
+
+### M5 — v1 정리 + 첫 dogfood
+- 💤 `M5.1.a~c` (P1) — v1 재평가 & DROP 확정
+- 💤 `M5.2.a~c` (P1) — 첫 dogfood 1 사이클 완주
+- 💤 `M5.3.a~d` (P2) — 문서 정리 / 상호 링크 검증
+
+---
+
+## 5. Blocked
+
+없음.
+
+> 차단 사유가 생기면 카드에 🚧 + `Blocker: <한 줄>` + 의존 ID 를 명시한다.
+
+---
+
+## 6. Done
+
+### v1 (이전 사이클)
+- ✅ v1 P1-a — OOB pending-approvals (0.15 release, M5.1.b 와 함께 v2 로 inherit)
+- ✅ v1 P1-b-1 — Queue schema v2 (0.15)
+- ✅ v0.x 초기 109 항목 (변경 로그는 `CHANGELOG.md` 참조)
+
+### M0 — Audit & 기반 준비
+- ✅ `M0.1.a` — CLAUDE.md rule 후보 enumerate
+- ✅ `M0.1.b` — conventions / hook-architecture / evidence-model 결정 추출
+- ✅ `M0.1.c` — `src/runtime/*.ts` invariant/magic number 수집
+- ✅ `M0.1.d` — `.dohyun/logs/` ai-bypass-attempt 샘플 확인
+- ✅ `M0.2.a~d` — chazm 12 섹션 / CLAUDE 래퍼 / commit-msg / 서브에이전트 매핑
+- ✅ `M0.3.a~d` — Hot cache 보류 / fix +1 / code-path 인용 / `infra` drop
+
+### M1 — 문서 골격 재편 (진행 중 land 분량)
+- ✅ `M1.1.a~l` — `AGENT.md` 12 장 신설 (commit 87a8d63)
+- ✅ `M1.2.a~k` — `CLAUDE.md` 얇은 래퍼 (commit 5bcdec4)
+- ✅ `M1.3.a~h` — `docs/SYSTEM-DESIGN.md` 신설 (commit b45a962)
+- ✅ `M1.4.a~e` — `docs/PLAN.md` 신설 (이 commit)
+- ✅ `M1.5.a~k` — `backlog.md` 신설 (이 commit)
+
+### M2 — Commit 규율 하네스화 (land 분량)
+- ✅ `M2.1.a~c` — commit-msg hook + CLI + 단위 테스트 (commit 5b6f3f0)
+- ✅ `M2.2.a~b` — `dohyun setup` 멱등 설치 + chain
+- ✅ `M2.3.a~b` — `[red]` advisory + 단위 테스트
+
+---
+
+## 7. Dropped
+
+- ❌ v1 P1-b-2 — Diff snapshot 자동 저장 (phase-marked commit 으로 대체).
+- ❌ v1 P1-b-3 — Evidence archive (git history 가 archive).
+- ❌ v1 P1-c — LLM judge 자동화 (verifier 서브에이전트 M3.3 가 사람 호출형으로 대체).
+
+---
+
+## 8. 의존성 그래프
+
+```
+M0 ✅
+ └─ M1 (🟨)
+     ├─ M1.1 ✅ ──┐
+     ├─ M1.2 ✅ ──┤
+     ├─ M1.3 ✅ ──┼─→ M1.6 ⬜ → (M1 완료)
+     ├─ M1.4 ✅ ──┤
+     └─ M1.5 ✅ ──┘
+M1 → M2.4 / M2.5 (validate.sh + breath × phase marker)
+M2 → M3 (서브에이전트는 phase marker 가 land 된 뒤 만든다)
+M3 → M4 (slash command 는 서브에이전트 호출 entry)
+M3 → M5.2 (dogfood 는 서브에이전트 3 단으로 1 사이클)
+M5.1 ⫯ M5.3 (v1 cleanup 은 정리 작업 직전)
+```
+
+---
+
+## 9. 진척 체크포인트
+
+| 마일스톤 | 완료 정의 |
+|---|---|
+| M0 | drafts 사용자 리뷰 1 회 통과 (✅ 2026-04-24) |
+| M1 | 새 Claude Code 세션이 `@AGENT.md` 만 읽고 한 task 완주 가능 |
+| M2 | phase marker 미부착 commit reject + breath gate marker 기반 동작 |
+| M3 | review-gate 가 verifier 서브에이전트로 동작, 판정이 JSON 으로 저장 |
+| M4 | 4 종 slash command 가 `.claude/commands/` 에 land 되고 동작 |
+| M5 | 신 하네스로 기능 1 개 완주 (4+ 커밋), `_drafts` 정리 |
+
+각 M 완료 후 **tidy cycle 강제** — 다음 task 는 `[structural]` 커밋으로 분리.
+
+---
+
+## 10. Working Agreements
+
+- WIP 한도: Now 3 카드. 초과 시 새 task 시작 금지.
+- 새 카드 추가 시 PLAN.md 에 같은 ID 가 정의되어 있어야 한다 (없으면 PLAN.md 먼저 갱신).
+- 카드 이동은 작업 commit 의 일부로 같이 land (별도 commit 금지 — drift 방지).
+- DROP 결정은 본 파일 7 절에 한 줄 + `_drafts/` 의 결정 노트 링크.
+- 매 카드는 우선순위 라벨 `(Pn)` 필수 — 없는 카드는 backlog 에 못 들어감.
+- 모순/drift 발견 시 즉시 작업을 멈추고 PLAN.md 와 sync.
+
+---
