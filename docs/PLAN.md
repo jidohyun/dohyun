@@ -14,7 +14,7 @@
 | M0 | Audit & 기반 준비 | ✅ |
 | M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
 | M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 + M2.4 ✅, M2.5 / M2.2.c 대기) |
-| M3 | Writer/Reviewer 서브에이전트 | ⬜ |
+| M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1+M3.2+M3.3 ✅, M3.4/M3.5 대기) |
 | M4 | Custom Slash Commands | ⬜ |
 | M5 | v1 정리 + 첫 dogfood | ⬜ |
 
@@ -145,21 +145,21 @@
 
 ---
 
-## 5. M3 — Writer / Reviewer 서브에이전트 (⬜)
+## 5. M3 — Writer / Reviewer 서브에이전트 (🟨)
 
-### M3.1 `.claude/agents/dohyun-planner.md`
-- [ ] M3.1.a frontmatter (model=opus, read-only tools)
-- [ ] M3.1.b Invariants 셀프체크 + SYSTEM-DESIGN 결정 ID 인용 의무
+### M3.1 `.claude/agents/dohyun-planner.md` ✅ (commit db8fb06)
+- [x] M3.1.a frontmatter (model=opus, read-only tools)
+- [x] M3.1.b Invariants 셀프체크 + SYSTEM-DESIGN 결정 ID 인용 의무
 
-### M3.2 `.claude/agents/dohyun-implementer.md`
-- [ ] M3.2.a frontmatter (model=sonnet, full tools)
-- [ ] M3.2.b TDD × Tidy First, 한 번에 task 1 개
-- [ ] M3.2.c 위험 명령 자동 실행 금지 (CLAUDE.md F)
+### M3.2 `.claude/agents/dohyun-implementer.md` ✅ (commit db8fb06)
+- [x] M3.2.a frontmatter (model=sonnet, full tools)
+- [x] M3.2.b TDD × Tidy First, 한 번에 task 1 개
+- [x] M3.2.c 위험 명령 자동 실행 금지 (CLAUDE.md F)
 
-### M3.3 `.claude/agents/dohyun-verifier.md`
-- [ ] M3.3.a frontmatter (model=opus, read-only Bash)
-- [ ] M3.3.b `AGENT.md 4` + `10` 자동 점검
-- [ ] M3.3.c PASS / FAIL / CRITICAL 판정 출력 스키마
+### M3.3 `.claude/agents/dohyun-verifier.md` ✅ (commit db8fb06)
+- [x] M3.3.a frontmatter (model=opus, read-only Bash)
+- [x] M3.3.b `AGENT.md 4` + `10` 자동 점검
+- [x] M3.3.c PASS / PASS-with-warning / FAIL / CRITICAL 판정 출력 스키마
 
 ### M3.4 review-gate 재배선
 - [ ] M3.4.a `dohyun review run <id>` → verifier 서브에이전트 명시 spawn

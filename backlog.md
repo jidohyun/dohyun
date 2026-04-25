@@ -25,10 +25,10 @@
 | 칸 | 카드 수 |
 |---|---|
 | 🔥 Now | 0 |
-| 🟢 Next | 3 |
-| 💤 Later | 17 |
+| 🟢 Next | 10 |
+| 💤 Later | 9 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 27+ |
+| ✅ Done | 30+ |
 | ❌ Dropped | 3 |
 
 ---
@@ -41,6 +41,13 @@
 
 ## 3. Next (즉시 시작 가능)
 
+### M3 — review-gate 재배선 + override 문서화
+- 🟢 `M3.4.a` (P1) — `scripts/review.ts` 의 `dohyun review run <id>` 가 dohyun-verifier 서브에이전트를 명시 spawn
+- 🟢 `M3.4.b` (P1) — verifier 판정을 `.dohyun/reviews/<id>.json` 에 저장
+- 🟢 `M3.4.c` (P2) — Stop hook 이 판정 없이 review-pending 종료 시 재주입
+- 🟢 `M3.5.a` (P2) — `AGENT.md D.2` 우선순위 명시 (`.claude/agents/` > 글로벌)
+- 🟢 `M3.5.b` (P3) — 우선순위 실증 (e2e)
+
 ### M2.5 — Breath × phase marker 통합
 - 🟢 `M2.5.a` (P1) — 최근 N 커밋 phase marker 기반 inhale 카운트
 - 🟢 `M2.5.b` (P1) — tidy 요구 시 다음 커밋이 `[structural]`/`[refactor]` 여야 해제
@@ -52,13 +59,6 @@
 ---
 
 ## 4. Later
-
-### M3 — Writer / Reviewer 서브에이전트
-- 💤 `M3.1.a~b` (P1) — `dohyun-planner` 정의
-- 💤 `M3.2.a~c` (P1) — `dohyun-implementer` 정의
-- 💤 `M3.3.a~c` (P1) — `dohyun-verifier` 정의
-- 💤 `M3.4.a~c` (P1) — review-gate 재배선
-- 💤 `M3.5.a~b` (P2) — Global agent override 문서화
 
 ### M4 — Custom Slash Commands
 - 💤 `M4.1` (P2) — `/dohyun:backlog-start`
@@ -109,6 +109,11 @@
 - ✅ `M2.2.a~b` — `dohyun setup` 멱등 설치 + chain (commit 5b6f3f0)
 - ✅ `M2.3.a~b` — `[red]` advisory + 단위 테스트 (commit 5b6f3f0)
 - ✅ `M2.4.a~e` — `scripts/validate.sh` + npm `typecheck`/`lint`/`validate` (commit 927281c)
+
+### M3 — Writer / Reviewer 서브에이전트 (land 분량)
+- ✅ `M3.1.a~b` — `.claude/agents/dohyun-planner.md` (read-only, opus) (commit db8fb06)
+- ✅ `M3.2.a~c` — `.claude/agents/dohyun-implementer.md` (sonnet, full tools, TDD + Tidy First) (commit db8fb06)
+- ✅ `M3.3.a~c` — `.claude/agents/dohyun-verifier.md` (read-only Bash, opus, 4 단 판정) (commit db8fb06)
 
 ---
 
