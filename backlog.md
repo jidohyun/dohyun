@@ -26,9 +26,9 @@
 |---|---|
 | 🔥 Now | 0 |
 | 🟢 Next | 6 |
-| 💤 Later | 9 |
+| 💤 Later | 6 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 35+ |
+| ✅ Done | 38+ |
 | ❌ Dropped | 3 |
 
 ---
@@ -57,11 +57,8 @@
 
 ## 4. Later
 
-### M4 — Custom Slash Commands
-- 💤 `M4.1` (P2) — `/dohyun:backlog-start`
-- 💤 `M4.2` (P2) — `/dohyun:commit-lore`
-- 💤 `M4.3` (P2) — `/dohyun:validate`
-- 💤 `M4.4` (P3) — 상태 가시성 alias 확장
+### M4 — Custom Slash Commands (잔여)
+- 💤 `M4.4` (P3) — 상태 가시성 alias 확장 (`/dohyun-status`, `/dohyun-dod`, `/dohyun-queue` 는 이미 존재 — 추가 alias 만 필요 시)
 
 ### M5 — v1 정리 + 첫 dogfood
 - 💤 `M5.1.a~c` (P1) — v1 재평가 & DROP 확정
@@ -113,6 +110,12 @@
 - ✅ `M3.3.a~c` — `.claude/agents/dohyun-verifier.md` (read-only Bash, opus, 4 단 판정) (commit db8fb06)
 - ✅ `M3.4.a~b` — `dohyun review run` verifier banner + `--verifier-judgment` 영속화 (commit 76a750c)
 - ✅ `M3.5.a` — CLAUDE.md D.2 agent override 우선순위 명시 (commit b1bf9c4)
+
+### M4 — Custom Slash Commands (land 분량)
+- ✅ `M4.1` — `/dohyun-backlog-start` (Now promote, WIP 3, 자동 commit 금지)
+- ✅ `M4.2` — `/dohyun-commit-lore` (validate 사전 검증 + phase marker 초안 + 사용자 승인 commit)
+- ✅ `M4.3` — `/dohyun-validate` (npm run validate 호출 + 결과 요약)
+  - 모두 commit 직후 hash (현재 묶음 commit 진행 중)
 
 ---
 

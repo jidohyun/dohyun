@@ -15,7 +15,7 @@
 | M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
 | M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 + M2.4 ✅, M2.5 / M2.2.c 대기) |
 | M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1+M3.2+M3.3 ✅, M3.4.a+b ✅ + M3.5.a ✅, M3.4.c+M3.5.b 대기) |
-| M4 | Custom Slash Commands | ⬜ |
+| M4 | Custom Slash Commands | 🟨 (M4.1+M4.2+M4.3 ✅, M4.4 후속) |
 | M5 | v1 정리 + 첫 dogfood | ⬜ |
 
 > 상세 마일스톤 배경/리스크는 `.dohyun/plans/v2-roadmap-chazm-style.md` 의 헤더를 참조.
@@ -174,14 +174,14 @@
 
 ## 6. M4 — Custom Slash Commands (⬜)
 
-### M4.1 `/dohyun:backlog-start`
-- [ ] backlog.md 의 Now 첫 항목 시작 (없으면 Next 첫 항목 promote)
+### M4.1 `/dohyun-backlog-start` ✅ (commit 21 — 곧 hash)
+- [x] backlog.md 의 Now 첫 항목 시작 (없으면 Next 첫 항목 promote, WIP 3 강제, 자동 commit 금지)
 
-### M4.2 `/dohyun:commit-lore`
-- [ ] staged diff + 활성 task 컨텍스트로 phase marker 추정 + 메시지 초안
+### M4.2 `/dohyun-commit-lore` ✅
+- [x] npm run validate 4/4 사전 검증 + phase marker 추정 + 메시지 초안 + 사용자 승인 후 commit
 
-### M4.3 `/dohyun:validate`
-- [ ] `scripts/validate.sh` 호출 + 결과 요약
+### M4.3 `/dohyun-validate` ✅
+- [x] `npm run validate` 호출 + 4/4 통과 또는 K/4 + 어느 단계 실패 요약
 
 ### M4.4 상태 가시성 커맨드 확장
 - [ ] `/dohyun:status` (alias) / `/dohyun:dod` / `/dohyun:queue`
