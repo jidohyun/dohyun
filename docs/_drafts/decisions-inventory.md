@@ -121,7 +121,7 @@
 
 ## 8. 추천 총 결정 수 (M1.3용)
 
-**1차 batch 21 개** (M1.3 SYSTEM-DESIGN.md 에 우선 수록):
+**1차 batch 23 개** (M1.3 SYSTEM-DESIGN.md 에 우선 수록):
 - H1, H2, H3, H4, H5
 - V1, V2, V3, V8, V9
 - B1, B2, B4

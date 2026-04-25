@@ -2,7 +2,7 @@
 
 > dohyun 의 비-자명 결정을 **ID 화** 하여 코드/문서/커밋이 모두 같은 ID 로 역참조할 수 있게 한다.
 > 본 문서의 모든 결정은 이미 코드 또는 다른 docs 에 존재한다. **새로 발명하지 않는다** — 발견된 결정에 ID 를 부여할 뿐이다.
-> 입력: `docs/_drafts/decisions-inventory.md`. 1차 batch 21 개 (실제 인덱싱 23 단락) 가 본 문서에 수록된다. 2차 batch 후보 20 개는 부록 B 참조.
+> 입력: `docs/_drafts/decisions-inventory.md`. 1차 batch **23 개** 가 본 문서에 수록된다 (drafts 8장의 "21 개" 라벨은 H 5 + V 5 + B 3 + S 3 + Q 1 + R 3 + G 1 + D 2 합산 누락 — 본 문서가 정확한 카운트). 2차 batch 후보 20 개는 부록 B 참조.
 
 ## 0. 사용법
 
