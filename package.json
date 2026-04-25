@@ -43,7 +43,10 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "bash scripts/lint.sh",
     "test": "npm run build && DOHYUN_NO_DAEMON=1 node --test tests/*.test.mjs tests/**/*.test.mjs",
+    "validate": "bash scripts/validate.sh",
     "prepublishOnly": "npm run test",
     "dohyun": "node --loader ts-node/esm src/cli/index.ts"
   },
