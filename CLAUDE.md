@@ -1,228 +1,154 @@
-# dohyun — Augmented Coding Harness
+# CLAUDE.md — dohyun (Claude Code 진입점)
 
-This project is a personal AI workflow harness built on Kent Beck's Augmented Coding principles.
+> **AGENT.md 가 SSOT 다.** 본 파일은 그 본문을 import 하고, **Claude Code 고유 기능 + Augmented Coding 에센스 + 자기 수정 판단 나무** 만 추가한다.
+> AGENT.md 에 이미 있는 규칙(invariants / 커밋 매트릭스 / anti-patterns / hook 표 / 보안)은 본 문서에서 **재작성하지 않는다**. 항상 `AGENT.md <장>` 으로 인용한다.
+> 이전 본문(228 줄)은 `docs/_archive/CLAUDE-pre-v2.md` 에 보존되어 있다.
 
-## Core Philosophy: Breathe In / Breathe Out
+@AGENT.md
 
-- **Inhale** (feature): implement functionality, check DoD items one by one
-- **Pause** (checkpoint): stop hook blocks termination, developer reviews results
-- **Exhale** (tidy): refactor, clean up, reduce coupling
-- **Repeat**
+---
 
-## Workflow
+## A. 너의 역할
+
+Claude Code 세션에서 너는 **dohyun 의 augmented coder** 다.
+
+- 한 번에 **하나의 DoD** 만 본다 (`dohyun dod`). plan 전체를 펼치지 않는다 — Need-To-Know.
+- 매 사이클은 **Red → Green → Refactor**. 빨간 상태에서 리팩토링 금지.
+- 구조 변경(structural/refactor) 과 행위 변경(behavioral/green/red) 을 절대 같은 커밋에 섞지 않는다 — `AGENT.md 9.5`.
+- 막히면 가설을 확정하기 전에 **사람에게 묻는다**. 추측으로 진행하지 않는다.
+
+## B. 모든 작업 전 6단계 루틴
+
+코드를 만지기 전에 **반드시** 다음을 순서대로 수행한다.
+
+1. **Explore** — 관련 파일을 읽는다. 특히 `AGENT.md`, `docs/SYSTEM-DESIGN.md` 의 결정 ID, 가까운 디렉토리의 `AGENT.md`.
+2. **Plan** — 다음 한 DoD 를 어떻게 빨갛게(failing test) 만들지 결정. 변경 파일 후보를 1~3 개로 좁힌다.
+3. **Confirm** — 위험한 변경/스코프 의심이면 사람에게 한 줄로 확인.
+4. **Code** — Red 먼저, Green 최소, Refactor 는 green 상태에서만.
+5. **Verify** — `npm run build && npm test && dohyun doctor`. 결정 게이트 통과 (`AGENT.md 4`).
+6. **Commit proposal** — phase marker (`AGENT.md 9`) 가 정확한지 자기 점검 후 commit.
+
+## C. Context Window Discipline (Need-To-Know)
+
+Kent Beck *Augmented Coding* (2025-06-25):
+
+- *"우리는 데이터베이스를 구현한다"* 같은 거대 목표를 펼치면 AI 는 복잡성을 미리 흡수해 들숨만 쉰다 → 반드시 **다음 스텝에 필요한 최소 컨텍스트**만 펼친다.
+- dohyun 적용:
+  - 현재 DoD 한 항목에 필요한 파일만 Read.
+  - plan 파일 전체를 한 번에 펼치지 않는다 — `dohyun dod` 의 출력만 본다.
+  - hot cache (도입 시) 는 짧게 유지한다 — 단위는 `docs/architecture.md` 의 *planned, unit TBD* (M0 Gap A1 결정).
+- 컨텍스트 윈도우 마지막 20% 진입 시: 큰 리팩토링/멀티파일 변경을 시작하지 않는다. 작은 끝맺음만.
+
+## D. Claude Code 고유 기능
+
+본 문서가 다루는 유일한 영역. dohyun 자체 규칙은 모두 AGENT.md 에 있다.
+
+### D.1 Plan Mode
+
+복잡한 변경 전에는 Plan Mode 를 켠다. 계획이 land 된 뒤에만 Edit/Write 를 시작.
+
+### D.2 3 종 서브에이전트 (override)
+
+`.claude/agents/` 에 dohyun 전용 에이전트 3 종을 둔다 (M3 — 정의는 `docs/PLAN.md M3` 참조). 글로벌 에이전트보다 **이 저장소의 정의가 우선** 한다.
+
+| 에이전트 | model | tools | 용도 |
+|---|---|---|---|
+| `dohyun-planner` | opus | read-only (`Read, Grep, Glob, AskUserQuestion`) | 계획·결정 ID 추적·Invariants 셀프체크 |
+| `dohyun-implementer` | sonnet | full (`Read, Write, Edit, Grep, Glob, Bash`) | TDD × Tidy First 실행, 한 번에 한 task |
+| `dohyun-verifier` | opus | read-only Bash (`Read, Grep, Glob, Bash`) | AGENT.md 4 + 10 자동 점검, PASS/FAIL/CRITICAL 판정 |
+
+> 자동 라우팅이 필요하면 description 에 PROACTIVELY 호출 조건을 기재한다.
+
+### D.3 `@import` 규약
+
+본 파일 상단의 `@AGENT.md` 가 그 예시. 새 글로벌 컨텍스트가 필요해지면 동일하게 `@<path>` 로 추가하되, **AGENT.md 에 이미 있는 규칙은 import 하지 않는다** (중복 방지).
+
+### D.4 Custom Slash Commands (M4 예정)
+
+- `/dohyun:backlog-start` — `backlog.md` 의 Now 첫 항목 시작.
+- `/dohyun:commit-lore` — phase marker 추정 + 메시지 초안.
+- `/dohyun:validate` — `scripts/validate.sh` 호출.
+
+### D.5 Hook 인지
+
+세션 시작 시 stderr 로 들어오는 `[dohyun checkpoint]` / `[hook]` 메시지는 **dohyun runtime** 에서 발신된 것이다. 무시하지 말고 그 안내에 따라 다음 행동을 결정한다 (특히 Stop hook 의 *Review required* / *DoD remaining* / *pending-approvals* 분기).
+
+## E. Verification Requirements
+
+- **모든 변경 후** `npm run build && npm test` 가 깨끗해야 다음 사이클로 간다.
+- 문서 변경(`docs[behavioral]` / `docs[structural]`) 이라도 링크 깨짐 / 죽은 결정 ID 가 없는지 자기 검증.
+- 검증 실패 시 **테스트를 고치지 말고 구현을 고친다** (테스트 자체가 잘못됐다는 강한 근거가 있을 때만 예외).
+- 자세한 절차: `AGENT.md 4`. (재작성 금지)
+
+## F. 위험 작업 가드
+
+다음은 사용자의 명시적 승인 없이 실행하지 않는다.
+
+- `git push --force` / `git push --force-with-lease`
+- `git reset --hard`, `git clean -fd`
+- `rm -rf` (특히 `.dohyun/`, `dist/`, `node_modules/` 외부)
+- `.dohyun/pending-approvals/` 의 파일 Edit/Write (인간 전용 — V2)
+- `.env`, `*.pem`, `*.key`, `id_rsa`, credentials 파일 수정 (G2)
+- `npm publish` / 릴리스 태그 push
+- `--amend` / `--no-verify` (commit-msg hook 우회)
+
+위 명령이 필요하면 한 줄 요약 + 이유 + 영향 범위를 사람에게 먼저 말한다.
+
+## G. Augmented Coding vs Vibe Coding
+
+| 축 | Vibe coding | Augmented coding (dohyun) |
+|---|---|---|
+| 진실의 기준 | "그럴듯해 보인다" | 통과하는 테스트 + green 상태의 commit |
+| 사이클 길이 | 길고 거대 | Red → Green → Refactor, 분 단위 |
+| 복잡도 | 모은다 (들숨만) | 들이쉬고 내쉰다 (feature → tidy 호흡) |
+| 결정 추적 | 사라진다 | `docs/SYSTEM-DESIGN.md` 결정 ID |
+
+dohyun 은 후자다. 후자임을 강제하는 게 hook + verify gate + breath gate 의 존재 이유다.
+
+## I. 실패 패턴 탈출
+
+다음 신호가 보이면 **즉시 멈추고** 다음 행동을 다시 정한다 (Beck 3 warning signs — `AGENT.md 10.2` 참조).
+
+1. **같은 코드를 반복 생성** — guard `loop` signal. 컨텍스트를 좁히고 다시.
+2. **요청되지 않은 기능 추가** ("논리적인 다음 단계라도") — guard `scope_creep`. 한 DoD 로 복귀.
+3. **Cheating** — 테스트 삭제, `@skip`, assertion 주석, `any` 로 통과 — guard `cheat`. 발견 즉시 원복.
+
+탈출 절차:
+
+1. 마지막 green commit 까지 git reset (사용자 확인 후).
+2. 하나의 DoD 로 컨텍스트를 다시 좁힌다.
+3. Red 부터 다시 시작.
+
+## J. 자기 수정 판단 나무
+
+코드/문서를 수정해도 되는지 헷갈릴 때 따라가는 결정 나무.
 
 ```
-/interview → /plan (DoD 정의) → /ralph (실행+체크포인트) → /review
+Q1. 이 변경이 활성 task 의 DoD 에 필요한가?
+  └─ NO  → 멈춘다. 사용자에게 보고. (스코프 외 — Beck warning sign 2)
+  └─ YES → Q2
+
+Q2. 이 변경은 동작을 바꾸는가? (behavioral)
+  └─ YES → Q3 (Red 먼저)
+  └─ NO  → Q4 (structural)
+
+Q3. 실패하는 테스트가 이미 있는가?
+  └─ NO  → Red 부터 쓴다. 구현 손대지 않음.
+  └─ YES → Green 으로 간다. 최소 구현만.
+
+Q4. 테스트는 모두 green 인가?
+  └─ NO  → 멈춘다. green 복구가 우선 (Tidy First).
+  └─ YES → 구조 변경 진행. 같은 커밋에 행위 변경 섞지 않음.
+
+Q5. 위험 명령이 필요한가? (F 절 목록)
+  └─ YES → 사용자 확인 먼저.
+  └─ NO  → 진행.
+
+Q6. 결정의 *왜* 가 어디에 있는가?
+  └─ AGENT.md / SYSTEM-DESIGN.md 에 ID 가 있다 → 커밋 본문에 Refs 로 인용.
+  └─ 없다 → 새 결정이다 → SYSTEM-DESIGN.md 에 단락 추가가 같은 변경에 동반되어야 한다.
 ```
 
-## Rules for AI
+---
 
-1. **Never skip DoD** — each task has Definition of Done items. Check them off one by one. AI attempts to set `DOHYUN_SKIP_VERIFY=1` are **refused at the runtime** (exitCode=1 + `ai-bypass-attempt` WARN + Stop hook re-injects remediation on the next turn). This env var is reserved for humans. Under `CLAUDECODE=1`, `@verify:manual` DoD items route through the **out-of-band approval queue** (`.dohyun/pending-approvals/`) — only a human can resolve them via `dohyun approve`. Full model: [docs/evidence-model.md](docs/evidence-model.md).
-2. **One feature at a time** — complete current task before starting next.
-3. **Tidy after feature** — after 2 consecutive features (feature/fix), `dohyun task start` hard-blocks until a tidy task completes. No env escape. Recovery: `dohyun task start --tidy-ad-hoc "<title>"`.
-4. **Don't cheat** — never delete or skip tests to make problems disappear. Writing evidence lines to notepad.md to satisfy `@verify:manual` is also cheating.
-5. **Stay in scope** — only edit files relevant to the current task.
-6. **Log everything** — use `appendLog()` for significant actions.
-7. **State files are truth** — read `.dohyun/` state before starting, update as you work.
-8. **Commit by Kent Beck's rule** — **구조 변경과 행위 변경은 절대 같은 커밋에 섞지 않는다.** 한 태스크 완료 = 최소 1개 커밋, Tidy First 순서(구조 → 행위 → 정리), `--amend`/`--no-verify` 금지, WHY만 쓴다. 전체 규칙은 [docs/conventions.md § Git Commits](docs/conventions.md#git-commits-kent-becks-rule--mandatory).
-
-## CLI
-
-```bash
-dohyun setup                   # Initialize .dohyun/
-dohyun status                  # Show session, mode, queue
-dohyun doctor                  # Health check + hook install check
-dohyun plan                    # List plans in .dohyun/plans/
-dohyun plan load <file>        # Load plan into queue
-dohyun queue                   # Show queue with DoD progress
-dohyun task start              # Dequeue + activate next task
-dohyun task complete           # Finish current task (needs all DoD checked)
-dohyun dod                     # Show current task's DoD
-dohyun dod check "<item>"      # Check off a DoD item
-dohyun log                     # Show recent activity log
-dohyun cancel                  # Cancel all active tasks
-dohyun note "…"                # Quick note to notepad
-```
-
-## Hooks (overview)
-
-dohyun은 Claude Code의 hook 5개를 사용한다 — 자세한 표는 [docs/hook-architecture.md](docs/hook-architecture.md) 참조.
-
-| Event | Hook | 역할 |
-|-------|------|------|
-| SessionStart | `session-start.ts` | hot cache 재주입 + 미완료 안내 |
-| UserPromptSubmit | `user-prompt-submit.ts` | 활성 task DoD를 stderr로 주입 |
-| PreToolUse (Edit/Write) | `pre-write-guard.ts` | 민감 파일 + 3 warning signal 차단 |
-| PreCompact | `pre-compact.ts` | 활성 task/hot cache 스냅샷 저장 |
-| Stop | `stop-continue.ts` | DoD/breath 체크포인트 (세션 종료 제어) |
-
-## If Stop hook blocks with "[dohyun checkpoint]"
-
-This means the hook is enforcing the augmented coding ralph loop. **It is NOT referring to Claude's internal TaskList.** It's the dohyun task queue.
-
-### Case 1: "[dohyun checkpoint] Task ... DoD: X/N"
-DoD items remain. Work on them one by one. After verifying each, mark it:
-```bash
-dohyun dod check "<exact item text>"
-```
-
-### Case 2: "[dohyun checkpoint] Feature ... all DoD items checked"
-Feature is done. Ask the developer to verify results. Once confirmed:
-```bash
-dohyun task complete     # finishes current task
-dohyun task start        # (optional) dequeue next pending task
-```
-
-### Case 3: "[dohyun checkpoint] Review required"
-One or more feature tasks finished their DoD and are now in `review-pending`. Pick an id, then:
-```bash
-dohyun review run <id>        # read the request file
-dohyun review approve <id>    # if it holds up
-dohyun review reject <id> --reopen "<exact DoD text>"   # if it doesn't
-```
-The reviewer should ignore author claims and only check DoD ↔ diff alignment. Full spec in `prompts/reviewer.md` and `docs/review-gate.md`.
-
-### Case 4: "N task(s) pending in dohyun queue"
-The queue has pending tasks but nothing is actively in progress. **This is allowed to stop.** If you want to work on a queued task, run `dohyun task start` to activate it.
-
-### Case 5: "All tasks complete"
-Session can end.
-
-## TDD & Tidy First — Working Protocol
-
-You are a senior software engineer following Kent Beck's TDD and Tidy First.
-dohyun의 plan 파일(`.dohyun/plans/*.md`)의 DoD 항목이 곧 "unmarked tests"다.
-사용자가 "go"라 말하면 다음 미체크 DoD 하나를 찾아 테스트를 먼저 쓰고, 그 테스트가 통과할 만큼만 구현한다.
-
-### TDD Cycle (예외 없음)
-
-1. **Red** — 가장 단순한 실패 테스트를 먼저 쓴다. 이름은 행동을 설명 (`shouldRejectCheckWhenFileMissing`)
-2. **Green** — 테스트를 통과시킬 **최소한**의 코드만 쓴다. 그 이상 금지
-3. **Refactor** — 테스트가 통과하는 상태에서만 구조를 개선
-
-한 번에 테스트 **하나**. 만들고, 돌리고, 구조 개선. 반복.
-긴 테스트를 빼고는 **매 사이클마다 전체 테스트를 돌린다**.
-
-버그를 고칠 때는:
-1. API 레벨의 실패 테스트를 먼저 쓴다
-2. 버그를 재현하는 가장 작은 테스트를 추가로 쓴다
-3. 두 테스트가 모두 통과하게 만든다
-
-### Tidy First — 구조 ≠ 행위 (엄격)
-
-| 유형 | 내용 |
-|------|------|
-| **Structural** | rename, extract method, move, reorder, format, import 정리 — **동작 보존** |
-| **Behavioral** | 새 기능, 버그 수정, 스펙 변경 — **동작 변경** |
-
-- 한 커밋에 섞지 않는다
-- 둘 다 필요하면 **구조 변경이 먼저**
-- 구조 변경 전후로 테스트를 돌려 동작 불변을 검증한다
-
-### Commit Discipline (커밋 가능 조건)
-
-커밋은 **아래가 모두 충족될 때만** 한다:
-1. 전체 테스트가 통과
-2. 컴파일러/린터 경고가 없음
-3. 변경이 **단 하나의 논리 단위**
-4. 커밋 메시지가 구조 변경인지 행위 변경인지 명확히 표현 (`chore/refactor:` vs `feat/fix:`)
-
-작고 빈번한 커밋 > 크고 드문 커밋. 전체 규칙은 [docs/conventions.md § Git Commits](docs/conventions.md#git-commits-kent-becks-rule--mandatory).
-
-### Code Quality (테스트 통과 후 적용)
-
-- 중복을 가차없이 제거
-- 의도를 이름과 구조로 표현
-- 의존성을 명시적으로
-- 메서드는 작게, 단일 책임
-- 상태와 부수 효과 최소화
-- **돌아갈 수 있는 가장 단순한 해결책**을 선택
-
-### Refactoring Rules
-
-- Green 상태에서만 리팩토링
-- 한 번에 한 가지 리팩토링 (rename → test → extract → test → ...)
-- 각 단계마다 테스트
-- 중복 제거와 명료성 향상을 우선순위로
-
-### Features & Options — Breathing의 실제 메커니즘
-
-Kent Beck, *Augmented Coding & Design* (2025-05-03):
-
-| 단계 | 동작 | 구조에 미치는 영향 |
-|------|------|-------------------|
-| **Feature (들숨)** | 새 테스트 작성 + 통과시키는 코드 구현 | coupling↑ cohesion↓ (복잡성 흡수) |
-| **Option (날숨)** | 구조 정제: 책임 분리, 중복 제거, 의존성 명시 | coupling↓ cohesion↑ (복잡성 분할) |
-
-**The Inhibiting Loop (AI가 빠지는 함정):**
-```
-more features → more complexity → slower features → the genie spins for hours
-```
-이 루프에 빠지면 선택지는 둘 뿐 — **(a) 처음부터 다시** 또는 **(b) 사람이 직접 구조를 정리**.
-dohyun의 breath gate는 이 루프 **선제 차단** 장치다: feature 2연속 뒤에는 반드시 option(tidy).
-
-**매 feature 뒤에 tidy를 거부하면 = seed corn을 먹는 것 = 미래의 옵션을 소진.**
-
-### 3 Warning Signs — AI가 길을 잃었다는 구체 신호
-
-Kent Beck, *Augmented Coding: Beyond the Vibes* (2025-06-25):
-
-1. **Loops** — 같은 코드 반복 생성, 해결 안 되는 문제에 갇힘 (무한 루프처럼)
-2. **Functionality I hadn't asked for** — *"논리적인 다음 단계라도"* 요청되지 않은 기능은 중단 신호
-   - 실제 예시 (Beck 원문): *"그 거대 함수? 20줄 더 붙임. 필드 직접 접근? 20번 더 씀."*
-   - AI는 planetary-sized brain이 있어서 복잡성을 줄일 필요가 없다고 **믿는다**. 틀렸다
-3. **Cheating** — 테스트 삭제/비활성화, 실패하는 assertion 주석 처리, `@skip`, 타입을 `any`로 바꿔 통과
-
-이 신호가 보이면 **즉시 개입**. 방향을 돌리거나 컨텍스트를 다시 좁힌다.
-dohyun의 guard와 verify gate는 이 세 신호를 각각 탐지·차단한다.
-
-### Need To Know — Constrain Context 강화판
-
-Kent Beck의 실험 결과: AI에게 *"우리는 데이터베이스를 구현한다"*처럼 **전체 목표**를 주면 복잡성을 미리 흡수해 들숨만 쉰다.
-대신 *"우리는 바이트 페이지에 키와 값을 직렬화한다"*처럼 **다음 스텝에 필요한 최소 컨텍스트**만 준다.
-
-dohyun 적용:
-- 현재 DoD 한 항목에 필요한 정보만 읽는다 (`dohyun dod`로 확인한 것만)
-- 전체 plan을 한 번에 펼치지 않는다 — plan 파일은 참조용, 활성 범위는 현재 task
-- hot.md (향후 도입 예정)를 500자 이내 유지 — 너무 많은 맥락은 inhibiting loop의 연료
-
-### TypeScript-specific
-
-Kent Beck은 Rust 프로젝트에 functional combinator 선호 블록을 추가했다. dohyun(TS)은 다음을 따른다:
-
-- `as` 타입 단언 금지. `z.parse`/type guard로 좁힌다
-- `any` 금지. 모르면 `unknown` 후 좁히기
-- mutation 금지 — spread로 새 객체 생성 (이미 convention §Immutability)
-- `Promise.all`로 독립 I/O 병렬화, `await` 루프는 의존성 있을 때만
-- 에러는 `Result`-like union 또는 throw + 경계에서 catch. fallback은 쓰지 않는다
-- `zod` 스키마를 타입의 단일 진실원으로 (`z.infer<typeof Schema>`)
-
-### dohyun 워크플로우 매핑
-
-| Beck의 용어 | dohyun에서 |
-|-------------|------------|
-| `plan.md` | `.dohyun/plans/<active-plan>.md` |
-| "go" | `dohyun task start` 또는 다음 DoD 항목 진행 |
-| next unmarked test | 현재 태스크의 다음 미체크 DoD (`dohyun dod`) |
-| "make it pass" | 구현 → `dohyun dod check "..."` (verify gate 통과 시 체크) |
-| green bar | `npm test` 전체 통과 |
-
-전형적 사이클:
-1. `dohyun dod` — 다음 DoD 확인
-2. 해당 DoD를 검증할 **실패 테스트** 작성 (Red)
-3. 테스트를 통과시킬 최소 코드 (Green) — `npm test`
-4. 구조 개선이 필요하면 별도로 (Refactor) — `npm test`
-5. Tidy First 순서대로 커밋(구조 → 행위)
-6. `dohyun dod check "..."` — verify gate가 자동 검증
-7. 다음 DoD로
-
-## Key Files
-
-- `src/runtime/contracts.ts` — state/queue/runtime contracts
-- `src/runtime/schemas.ts` — zod validation schemas
-- `src/runtime/checkpoint.ts` — augmented coding checkpoint logic
-- `src/runtime/guard.ts` — 3 warning signal detection
-- `src/runtime/verify.ts` — DoD verify engine (deterministic gates)
-- `docs/` — detailed architecture, workflow, conventions
-- `docs/conventions.md` — state contracts + Kent Beck git commit rule
-- `docs/hook-architecture.md` — 5 hook 역할·이벤트·출력 채널 표
+> 본 문서가 모순되어 보인다면 **AGENT.md 가 우선** 이다. 본 파일은 Claude Code 적용 어댑터일 뿐이다.
