@@ -45,6 +45,11 @@ async function main() {
       await runStatus(workDir, { json })
       break
     }
+    case 'resume': {
+      const { runResume } = await import('./resume.js')
+      await runResume(workDir)
+      break
+    }
     case 'cancel': {
       const { runCancel } = await import('../../scripts/cancel.js')
       await runCancel(workDir)
