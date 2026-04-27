@@ -15,7 +15,7 @@
 | M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
 | M2 | Commit 규율 하네스화 | ✅ (M2.1~M2.5 + M2.2.c ✅) |
 | M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1~M3.5 ✅; M3.6 — spawn 채널 복구 대기) |
-| M4 | Custom Slash Commands | 🟨 (M4.1+M4.2+M4.3 ✅, M4.4 후속) |
+| M4 | Custom Slash Commands | 🟨 (M4.1+M4.2+M4.3+M4.5 ✅, M4.4 후속) |
 | M5 | v1 정리 + 첫 dogfood | ⬜ |
 
 > 상세 마일스톤 배경/리스크는 `.dohyun/plans/v2-roadmap-chazm-style.md` 의 헤더를 참조.
@@ -196,6 +196,16 @@
 
 ### M4.4 상태 가시성 커맨드 확장
 - [ ] `/dohyun:status` (alias) / `/dohyun:dod` / `/dohyun:queue`
+
+### M4.5 `/dohyun-resume` ✅ (commit 4999fcc, 2026-04-27)
+- [x] `dohyun resume` CLI (SSOT) — `src/cli/resume.ts` 의 순수 함수
+      `composeResume(snapshot)` + IO 어댑터 `runResume(cwd)`. snapshot 은
+      current-task.json / queue.json / pending-approvals / breath state /
+      git status --short / git log --oneline -5 / backlog.md Next 첫 항목.
+- [x] Q3 결정 트리 (5 단계 first-match) 로 Next action 한 줄 추정.
+- [x] `.claude/skills/dohyun-resume/SKILL.md` (얇은 래퍼) — Claude skill
+      카탈로그에 디스커버리 확인.
+- [x] Q4=c: 출력만, 자동 후속 실행 없음.
 
 ---
 

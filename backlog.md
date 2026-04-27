@@ -117,6 +117,7 @@
 - ✅ `M4.2` — `/dohyun-commit-lore` (validate 사전 검증 + phase marker 초안 + 사용자 승인 commit)
 - ✅ `M4.3` — `/dohyun-validate` (npm run validate 호출 + 결과 요약)
   - 모두 commit 직후 hash (현재 묶음 commit 진행 중)
+- ✅ `M4.5` — `/dohyun-resume` (commit 4999fcc): `dohyun resume` CLI + skill — `/clear` 후 컨텍스트 5 초 복원, Q3 결정 트리로 Next action 한 줄.
 
 ---
 
