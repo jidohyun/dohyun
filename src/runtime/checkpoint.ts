@@ -37,7 +37,7 @@ function prependAiSignalsBanner(reason: string, signals: AiSignals | undefined):
 export function evaluateCheckpoint(
   currentTask: Task | null,
   continuationInfo: ContinuationInfo,
-  breath: BreathState = { featuresSinceTidy: 0 },
+  breath: BreathState = { featuresSinceTidy: 0, inhaleByCommit: 0 },
   aiSignals?: AiSignals,
 ): CheckpointAction {
   // Pending approvals outrank every other signal. Each one represents a DoD
