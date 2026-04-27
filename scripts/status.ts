@@ -1,4 +1,18 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { readSession, readModes, readCurrentTask, readQueue } from '../src/state/read.js'
+import { parseNextUp } from '../src/runtime/backlog-next.js'
+
+/** Read backlog.md if present at cwd. Silent fallback on any I/O failure (Invariant #7). */
+function readBacklog(cwd: string): string | null {
+  try {
+    const p = resolve(cwd, 'backlog.md')
+    if (!existsSync(p)) return null
+    return readFileSync(p, 'utf8')
+  } catch {
+    return null
+  }
+}
 
 export interface StatusOptions {
   json?: boolean
@@ -84,5 +98,23 @@ export async function runStatus(cwd: string, opts: StatusOptions = {}): Promise<
     }
   } else {
     console.log('\nQueue:    not initialized')
+  }
+
+  // Next up — pending task 우선, 없으면 backlog.md 의 Now/Next 첫 항목.
+  const tasks = queue?.tasks ?? []
+  const firstPending = tasks.find(t => t.status === 'pending')
+  if (firstPending) {
+    console.log(`\nNext up:  [${firstPending.type}] ${firstPending.title}`)
+    console.log(`          start with: dohyun task start`)
+  } else {
+    const next = parseNextUp(readBacklog(cwd) ?? '')
+    if (next.section && (next.id || next.title)) {
+      const label = next.id ? `\`${next.id}\`` : '(ad-hoc)'
+      const where = next.section === 'now' ? 'backlog Now' : 'backlog Next'
+      console.log(`\nNext up:  ${label} — ${next.title ?? ''} (${where})`)
+      console.log(`          load via: dohyun plan load <plan path> → dohyun task start`)
+    } else {
+      console.log('\nNext up:  (queue + backlog 모두 비어있음)')
+    }
   }
 }
