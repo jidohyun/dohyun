@@ -28,14 +28,14 @@
 | 🟢 Next | 4 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 40+ |
+| ✅ Done | 41+ |
 | ❌ Dropped | 3 |
 
 ---
 
 ## 2. Now (WIP ≤ 3)
 
-비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다 (단, breath gate: feat 2 개 누적 → 다음 feat 차단, tidy 호흡 필요).
+비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
 
 ---
 
@@ -102,6 +102,7 @@
 - ✅ `M2.3.a~b` — `[red]` advisory + 단위 테스트 (commit 5b6f3f0)
 - ✅ `M2.4.a~e` — `scripts/validate.sh` + npm `typecheck`/`lint`/`validate` (commit 927281c)
 - ✅ `M2.5.a` — BreathState.inhaleByCommit 메트릭 추가 (option A — 게이트 미연결, commit 42dc324)
+- ✅ ad-hoc tidy — B7 결정 ID 등록 (INHALE_BY_COMMIT_CAP=100 의 *왜*, commit 2ba3720)
 
 ### M3 — Writer / Reviewer 서브에이전트 (land 분량)
 - ✅ `M3.1.a~b` — `.claude/agents/dohyun-planner.md` (read-only, opus) (commit db8fb06)
