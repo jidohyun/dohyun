@@ -33,6 +33,11 @@ export interface ResumeSnapshot {
   recentCommits: string[]
   /** backlog.md 의 Next 첫 항목 한 줄 (없으면 null) */
   backlogNextHead: string | null
+  /**
+   * `backlogNextHead` 의 항목 ID 와 매칭되는 `.dohyun/plans/*.md` 경로.
+   * 매칭 실패 또는 backlog Next 자체가 비어 있으면 null.
+   */
+  matchedPlanPath: string | null
 }
 
 /**
@@ -121,9 +126,12 @@ function decideNextAction(snap: ResumeSnapshot): string {
     return 'dohyun task start'
   }
 
-  // 5. queue empty → suggest backlog Next
+  // 5. queue empty → suggest backlog Next, with or without matched plan
   if (snap.backlogNextHead) {
-    return `backlog Next: ${snap.backlogNextHead}  (dohyun plan load <path> → dohyun task start)`
+    if (snap.matchedPlanPath) {
+      return `backlog Next: ${snap.backlogNextHead}\n      → dohyun plan load ${snap.matchedPlanPath} → dohyun task start`
+    }
+    return `backlog Next: ${snap.backlogNextHead} — plan 파일 없음 (dohyun plan new <name> 또는 .dohyun/plans/ 에 직접 작성)`
   }
 
   return '(idle — backlog Now/Next is empty; consider adding a task)'
@@ -134,7 +142,7 @@ function decideNextAction(snap: ResumeSnapshot): string {
 // ---------------------------------------------------------------------------
 
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileExists } from '../utils/fs.js'
 import { readJson } from '../utils/json.js'
@@ -167,6 +175,29 @@ function safeGit(cwd: string, args: string[]): string {
   } catch {
     return ''
   }
+}
+
+/**
+ * backlog Next 항목의 ID (예: 'M3.6') 와 매칭되는 plan 파일을 찾는다.
+ * 매칭 규칙: ID 의 점·공백을 하이픈/소문자로 정규화한 토큰이 plan 파일명에
+ * 포함되면 매치. 같은 디렉토리에 여러 후보가 있으면 가장 최근 mtime 의 파일
+ * (이름 정렬상 마지막 — `plan-YYYY-MM-DD-...` 명명 관례).
+ */
+function findMatchingPlanPath(cwd: string, backlogNextHead: string | null): string | null {
+  if (!backlogNextHead) return null
+  const idMatch = backlogNextHead.match(/^([A-Za-z0-9.\-_]+)/)
+  if (!idMatch) return null
+  const token = idMatch[1].toLowerCase().replace(/\./g, '-')
+  const plansDir = resolve(cwd, '.dohyun', 'plans')
+  let entries: string[]
+  try {
+    entries = readdirSync(plansDir).filter(f => f.endsWith('.md'))
+  } catch {
+    return null
+  }
+  const matches = entries.filter(f => f.toLowerCase().includes(token)).sort()
+  if (matches.length === 0) return null
+  return `.dohyun/plans/${matches[matches.length - 1]}`
 }
 
 function readBacklogNextHead(cwd: string): string | null {
@@ -258,8 +289,9 @@ async function readSnapshot(cwd: string): Promise<ResumeSnapshot> {
   // Recent commits
   const log = safeGit(cwd, ['log', '--oneline', '-5']).split('\n').filter(Boolean)
 
-  // Backlog Next head
+  // Backlog Next head + matched plan
   const backlogNextHead = readBacklogNextHead(cwd)
+  const matchedPlanPath = findMatchingPlanPath(cwd, backlogNextHead)
 
   return {
     activeTask,
@@ -270,6 +302,7 @@ async function readSnapshot(cwd: string): Promise<ResumeSnapshot> {
     workingTree: wt,
     recentCommits: log,
     backlogNextHead,
+    matchedPlanPath,
   }
 }
 
