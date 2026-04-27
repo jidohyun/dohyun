@@ -50,10 +50,11 @@ export function countInhalesByCommit(subjects: readonly string[]): number {
 
 /**
  * Read git log subjects (most-recent first) for the current repo.
- * Returns [] on any failure — Invariant #7 (hooks/breath gate must
+ * Returns null on any failure (M2.5.c — caller falls back to task.type),
+ * [] on success-but-empty repo. Invariant #7 (hooks/breath gate must
  * never throw on missing git or non-repo cwd).
  */
-function readGitSubjects(cwd?: string): string[] {
+function readGitSubjects(cwd?: string): string[] | null {
   try {
     const out = execFileSync(
       'git',
@@ -62,8 +63,24 @@ function readGitSubjects(cwd?: string): string[] {
     )
     return out.split('\n').filter(Boolean)
   } catch {
-    return []
+    return null
   }
+}
+
+/**
+ * M2.5.b + M2.5.c — pick the breath inhale count.
+ * Commit log wins when available (M2.5.b: marker-driven gate);
+ * task.type history is the fallback when git is unavailable
+ * (M2.5.c: never silently bypass the gate).
+ */
+export function chooseFeaturesSinceTidy(
+  commitSubjects: readonly string[] | null,
+  tasks: readonly Task[],
+): { count: number; source: 'commit' | 'task' } {
+  if (commitSubjects !== null) {
+    return { count: countInhalesByCommit(commitSubjects), source: 'commit' }
+  }
+  return { count: countFeaturesSinceTidy(tasks), source: 'task' }
 }
 
 /** Kent Beck's inhale limit: a tidy exhale is required after this many features. */
@@ -87,9 +104,11 @@ export function shouldBlockFeatureStart(
 /** Compute how many features have been completed since the last tidy exhale. */
 export async function getBreathState(cwd?: string): Promise<BreathState> {
   const queue = await readJson<QueueState>(paths.queue(cwd))
-  const inhaleByCommit = countInhalesByCommit(readGitSubjects(cwd))
-  if (!queue) return { featuresSinceTidy: 0, inhaleByCommit }
-  return { featuresSinceTidy: countFeaturesSinceTidy(queue.tasks), inhaleByCommit }
+  const subjects = readGitSubjects(cwd)
+  const tasks = queue?.tasks ?? []
+  const inhaleByCommit = subjects === null ? 0 : countInhalesByCommit(subjects)
+  const chosen = chooseFeaturesSinceTidy(subjects, tasks)
+  return { featuresSinceTidy: chosen.count, inhaleByCommit }
 }
 
 function countFeaturesSinceTidy(tasks: readonly Task[]): number {
