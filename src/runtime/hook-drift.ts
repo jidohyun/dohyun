@@ -126,3 +126,29 @@ export function compareHooks(
     matcherDrifts,
   }
 }
+
+/**
+ * Doctor 의 `hooks events` 체크가 화면에 출력하는 detail 문자열을 만든다.
+ * drift.ok 면 등록된 hook 개수 + 이름 목록, 그렇지 않으면 사유 목록 +
+ * `dohyun setup --force-settings` 안내.
+ */
+export function formatHookDriftDetail(
+  drift: HookDriftReport,
+  settingsEvents: HookEvent[],
+  templateEvents: HookEvent[],
+): string {
+  if (drift.ok) {
+    return `${templateEvents.length} hook(s) registered — ${settingsEvents.join(', ')}`
+  }
+  const reasons: string[] = []
+  if (drift.missingEvents.length > 0) {
+    reasons.push(`missing: ${drift.missingEvents.join(', ')}`)
+  }
+  if (drift.commandDrifts.length > 0) {
+    reasons.push(`command drift: ${drift.commandDrifts.map(d => d.event).join(', ')}`)
+  }
+  if (drift.matcherDrifts.length > 0) {
+    reasons.push(`matcher drift: ${drift.matcherDrifts.map(d => d.event).join(', ')}`)
+  }
+  return `${reasons.join('; ')} — Run \`dohyun setup --force-settings\` to refresh`
+}

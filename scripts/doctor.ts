@@ -1,7 +1,7 @@
 import { fileExists } from '../src/utils/fs.js'
 import { readJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
-import { compareHooks, type SettingsHooksBlock } from '../src/runtime/hook-drift.js'
+import { compareHooks, formatHookDriftDetail, type SettingsHooksBlock } from '../src/runtime/hook-drift.js'
 
 interface CheckResult {
   name: string
@@ -101,27 +101,10 @@ export async function runDoctor(cwd: string, opts: DoctorOptions = {}): Promise<
       ? Object.keys(template.hooks)
       : ['SessionStart', 'PreToolUse', 'Stop']
 
-    let detail: string
-    if (drift.ok) {
-      detail = `${templateEvents.length} hook(s) registered — ${settingsEvents.join(', ')}`
-    } else {
-      const reasons: string[] = []
-      if (drift.missingEvents.length > 0) {
-        reasons.push(`missing: ${drift.missingEvents.join(', ')}`)
-      }
-      if (drift.commandDrifts.length > 0) {
-        reasons.push(`command drift: ${drift.commandDrifts.map(d => d.event).join(', ')}`)
-      }
-      if (drift.matcherDrifts.length > 0) {
-        reasons.push(`matcher drift: ${drift.matcherDrifts.map(d => d.event).join(', ')}`)
-      }
-      detail = `${reasons.join('; ')} — Run \`dohyun setup --force-settings\` to refresh`
-    }
-
     checks.push({
       name: 'hooks events',
       ok: drift.ok,
-      detail,
+      detail: formatHookDriftDetail(drift, settingsEvents, templateEvents),
       fix: drift.ok ? undefined : 'force-settings',
     })
   }
