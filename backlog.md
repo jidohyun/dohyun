@@ -24,18 +24,18 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 1 |
+| 🔥 Now | 0 |
 | 🟢 Next | 2 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 42+ |
+| ✅ Done | 43+ |
 | ❌ Dropped | 3 |
 
 ---
 
 ## 2. Now (WIP ≤ 3)
 
-- 🔥 ad-hoc tidy — v2 dogfood 회고 세션 2 단락 추가 — promoted 2026-04-27
+비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
 
 ---
 
@@ -100,6 +100,7 @@
 - ✅ `M2.5.a` — BreathState.inhaleByCommit 메트릭 추가 (option A — 게이트 미연결, commit 42dc324)
 - ✅ ad-hoc tidy — B7 결정 ID 등록 (INHALE_BY_COMMIT_CAP=100 의 *왜*, commit 2ba3720)
 - ✅ `M2.5.b` + `M2.5.c` — commit-driven breath gate (메인 신호 전환 + task.type fallback, commit 338b471)
+- ✅ ad-hoc tidy — v2 dogfood 회고 세션 2 단락 (commit 8a3e7fd)
 
 ### M3 — Writer / Reviewer 서브에이전트 (land 분량)
 - ✅ `M3.1.a~b` — `.claude/agents/dohyun-planner.md` (read-only, opus) (commit db8fb06)
