@@ -24,8 +24,8 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 0 |
-| 🟢 Next | 4 |
+| 🔥 Now | 1 |
+| 🟢 Next | 3 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
 | ✅ Done | 41+ |
@@ -35,7 +35,7 @@
 
 ## 2. Now (WIP ≤ 3)
 
-비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
+- 🔥 `M2.5.b` + `M2.5.c` (P1) — commit-driven breath gate (메인 신호 전환 + task.type fallback) — promoted 2026-04-27
 
 ---
 
@@ -43,10 +43,6 @@
 
 ### M3 — review-gate 후속
 - 🟢 `M3.5.b` (P3) — agent override 우선순위 실증 (M5.2 dogfood 시 자연스럽게 누적)
-
-### M2.5 — Breath × phase marker 통합
-- 🟢 `M2.5.b` (P1) — tidy 요구 시 다음 커밋이 `[structural]`/`[refactor]` 여야 해제
-- 🟢 `M2.5.c` (P2) — task.type 경로 fallback 유지
 
 ### M2.2 — 잔여
 - 🟢 `M2.2.c` (P2) — `dohyun doctor` 의 hook drift 감지
