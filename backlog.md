@@ -24,18 +24,18 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 1 |
+| 🔥 Now | 0 |
 | 🟢 Next | 4 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 39+ |
+| ✅ Done | 40+ |
 | ❌ Dropped | 3 |
 
 ---
 
 ## 2. Now (WIP ≤ 3)
 
-- 🔥 `M2.5.a` (P1) — 최근 N 커밋 phase marker 기반 inhale 카운트 (메트릭 추가, option A) — promoted 2026-04-27
+비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다 (단, breath gate: feat 2 개 누적 → 다음 feat 차단, tidy 호흡 필요).
 
 ---
 
@@ -101,6 +101,7 @@
 - ✅ `M2.2.a~b` — `dohyun setup` 멱등 설치 + chain (commit 5b6f3f0)
 - ✅ `M2.3.a~b` — `[red]` advisory + 단위 테스트 (commit 5b6f3f0)
 - ✅ `M2.4.a~e` — `scripts/validate.sh` + npm `typecheck`/`lint`/`validate` (commit 927281c)
+- ✅ `M2.5.a` — BreathState.inhaleByCommit 메트릭 추가 (option A — 게이트 미연결, commit 42dc324)
 
 ### M3 — Writer / Reviewer 서브에이전트 (land 분량)
 - ✅ `M3.1.a~b` — `.claude/agents/dohyun-planner.md` (read-only, opus) (commit db8fb06)
