@@ -17,6 +17,7 @@ function baseSnapshot(overrides = {}) {
     workingTree: [],
     recentCommits: [],
     backlogNextHead: null,
+    matchedPlanPath: null,
     ...overrides,
   }
 }
@@ -72,17 +73,30 @@ test('composeResume: active task with DoD unfinished → cite first unfinished D
   assert.match(out, /item two/, `expected first unfinished DoD, got:\n${out}`)
 })
 
-// --- Case 4: queue empty → backlog Next hint ---
+// --- Case 4: queue empty + no matched plan → suggest plan new ---
 
-test('composeResume: empty queue → suggest backlog Next', () => {
+test('composeResume: empty queue + no matched plan → suggest plan new', () => {
   const snap = baseSnapshot({
-    activeTask: null,
-    pendingTaskCount: 0,
-    workingTree: [],
     backlogNextHead: 'M3.6 — dohyun-* spawn 채널 복구',
+    matchedPlanPath: null,
   })
   const out = composeResume(snap)
   assert.match(out, /Next action:/)
-  assert.match(out, /M3\.6/, `expected backlog Next head in next-action, got:\n${out}`)
-  assert.match(out, /dohyun task start|dohyun plan load/, `expected start/load hint, got:\n${out}`)
+  assert.match(out, /M3\.6/)
+  assert.match(out, /dohyun plan new|plan 파일 없음|no plan file/i,
+    `expected hint for missing plan file, got:\n${out}`)
+})
+
+// --- Case 5: queue empty + matched plan → cite the plan path verbatim ---
+
+test('composeResume: empty queue + matched plan → cite plan path', () => {
+  const snap = baseSnapshot({
+    backlogNextHead: 'M3.6 — dohyun-* spawn 채널 복구',
+    matchedPlanPath: '.dohyun/plans/plan-2026-04-27-m3-6-spawn.md',
+  })
+  const out = composeResume(snap)
+  assert.match(out, /Next action:/)
+  assert.match(out, /\.dohyun\/plans\/plan-2026-04-27-m3-6-spawn\.md/,
+    `expected matched plan path verbatim, got:\n${out}`)
+  assert.match(out, /dohyun plan load/, 'expected dohyun plan load command')
 })
