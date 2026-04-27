@@ -13,7 +13,7 @@
 |---|---|---|
 | M0 | Audit & 기반 준비 | ✅ |
 | M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
-| M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 + M2.4 ✅, M2.5.a ✅ commit 42dc324, M2.5.b/c + M2.2.c 대기) |
+| M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 + M2.4 + M2.5 ✅, M2.2.c 대기) |
 | M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1+M3.2+M3.3 ✅, M3.4 ✅ + M3.5.a ✅, M3.5.b 대기) |
 | M4 | Custom Slash Commands | 🟨 (M4.1+M4.2+M4.3 ✅, M4.4 후속) |
 | M5 | v1 정리 + 첫 dogfood | ⬜ |
@@ -136,10 +136,10 @@
 - [x] M2.4.d `package.json` 에 `typecheck` / `lint` / `validate` 추가
 - [x] M2.4.e `AGENT.md 4` 본문 갱신 (예정 → 동작 중)
 
-### M2.5 Breath × phase marker 통합 🟨 (a ✅ commit 42dc324, option A — 메트릭 추가만)
+### M2.5 Breath × phase marker 통합 ✅ (a commit 42dc324, b+c commit 338b471)
 - [x] M2.5.a 최근 N 커밋 phase marker 기반 inhale 카운트 (BreathState.inhaleByCommit, 게이트 미연결)
-- [ ] M2.5.b tidy 요구 시 다음 커밋이 `[structural]`/`[refactor]` 여야 해제
-- [ ] M2.5.c task.type 경로 fallback 유지
+- [x] M2.5.b commit log 가 메인 신호 — getBreathState 가 commit 우선 (commit 338b471)
+- [x] M2.5.c git 실패 시 task.type fallback (readGitSubjects null → chooseFeaturesSinceTidy task 경로, commit 338b471)
 
 **M2 완료 조건**: phase marker 미부착 commit reject + breath gate marker 기반 동작.
 
