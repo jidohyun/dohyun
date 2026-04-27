@@ -1,6 +1,7 @@
 import { fileExists } from '../src/utils/fs.js'
 import { readJson } from '../src/utils/json.js'
 import { paths } from '../src/state/paths.js'
+import { compareHooks, type SettingsHooksBlock } from '../src/runtime/hook-drift.js'
 
 interface CheckResult {
   name: string
@@ -90,24 +91,38 @@ export async function runDoctor(cwd: string, opts: DoctorOptions = {}): Promise<
   })
 
   if (hasSettings) {
-    const settings = await readJson<{ hooks?: Record<string, unknown> }>(settingsPath)
-    const hookEvents = settings?.hooks ? Object.keys(settings.hooks) : []
-
+    const settings = await readJson<SettingsHooksBlock>(settingsPath)
     const templatePath = resolve(cwd, '.claude', 'settings.template.json')
-    const template = await readJson<{ hooks?: Record<string, unknown> }>(templatePath)
-    const expectedEvents = template?.hooks
+    const template = await readJson<SettingsHooksBlock>(templatePath)
+
+    const drift = compareHooks(settings, template, { dohyunRoot: cwd })
+    const settingsEvents = settings?.hooks ? Object.keys(settings.hooks) : []
+    const templateEvents = template?.hooks
       ? Object.keys(template.hooks)
       : ['SessionStart', 'PreToolUse', 'Stop']
 
-    const missingEvents = expectedEvents.filter(e => !hookEvents.includes(e))
+    let detail: string
+    if (drift.ok) {
+      detail = `${templateEvents.length} hook(s) registered — ${settingsEvents.join(', ')}`
+    } else {
+      const reasons: string[] = []
+      if (drift.missingEvents.length > 0) {
+        reasons.push(`missing: ${drift.missingEvents.join(', ')}`)
+      }
+      if (drift.commandDrifts.length > 0) {
+        reasons.push(`command drift: ${drift.commandDrifts.map(d => d.event).join(', ')}`)
+      }
+      if (drift.matcherDrifts.length > 0) {
+        reasons.push(`matcher drift: ${drift.matcherDrifts.map(d => d.event).join(', ')}`)
+      }
+      detail = `${reasons.join('; ')} — Run \`dohyun setup --force-settings\` to refresh`
+    }
 
     checks.push({
       name: 'hooks events',
-      ok: missingEvents.length === 0,
-      detail: missingEvents.length === 0
-        ? `${expectedEvents.length} hook(s) registered — ${hookEvents.join(', ')}`
-        : `missing: ${missingEvents.join(', ')} — Run \`dohyun setup --force-settings\` to refresh`,
-      fix: missingEvents.length === 0 ? undefined : 'force-settings',
+      ok: drift.ok,
+      detail,
+      fix: drift.ok ? undefined : 'force-settings',
     })
   }
 
