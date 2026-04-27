@@ -24,8 +24,8 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 0 |
-| 🟢 Next | 5 |
+| 🔥 Now | 1 |
+| 🟢 Next | 4 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
 | ✅ Done | 39+ |
@@ -35,7 +35,7 @@
 
 ## 2. Now (WIP ≤ 3)
 
-비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
+- 🔥 `M2.5.a` (P1) — 최근 N 커밋 phase marker 기반 inhale 카운트 (메트릭 추가, option A) — promoted 2026-04-27
 
 ---
 
@@ -45,7 +45,6 @@
 - 🟢 `M3.5.b` (P3) — agent override 우선순위 실증 (M5.2 dogfood 시 자연스럽게 누적)
 
 ### M2.5 — Breath × phase marker 통합
-- 🟢 `M2.5.a` (P1) — 최근 N 커밋 phase marker 기반 inhale 카운트
 - 🟢 `M2.5.b` (P1) — tidy 요구 시 다음 커밋이 `[structural]`/`[refactor]` 여야 해제
 - 🟢 `M2.5.c` (P2) — task.type 경로 fallback 유지
 
