@@ -42,10 +42,10 @@
 ## 3. Next (즉시 시작 가능)
 
 ### M3 — review-gate 후속
-- 🟢 `M3.5.b` (P3) — agent override 우선순위 실증 (M5.2 dogfood 시 자연스럽게 누적)
-
-### M2.2 — 잔여
-- 🟢 `M2.2.c` (P2) — `dohyun doctor` 의 hook drift 감지
+- 🟢 `M3.6` (P2) — `dohyun-*` 서브에이전트 spawn 채널 복구 — 현재 빌드의 Agent
+  도구 카탈로그에 `dohyun-planner` / `dohyun-implementer` / `dohyun-verifier`
+  가 등록되지 않아 Stop hook 의 verifier judgment 자동화가 작동하지 않음.
+  근거: `docs/_drafts/m3-5-b-observations.md` (2026-04-27 dogfood 발견).
 
 ---
 

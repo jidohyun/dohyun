@@ -13,8 +13,8 @@
 |---|---|---|
 | M0 | Audit & 기반 준비 | ✅ |
 | M1 | 문서 골격 재편 | ✅ 완료 (M1.1 ~ M1.6 land, beaee7e) |
-| M2 | Commit 규율 하네스화 | 🟨 (M2.1 + M2.2 + M2.3 + M2.4 + M2.5 ✅, M2.2.c 대기) |
-| M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1+M3.2+M3.3 ✅, M3.4 ✅ + M3.5.a ✅, M3.5.b 대기) |
+| M2 | Commit 규율 하네스화 | ✅ (M2.1~M2.5 + M2.2.c ✅) |
+| M3 | Writer/Reviewer 서브에이전트 | 🟨 (M3.1~M3.5 ✅; M3.6 — spawn 채널 복구 대기) |
 | M4 | Custom Slash Commands | 🟨 (M4.1+M4.2+M4.3 ✅, M4.4 후속) |
 | M5 | v1 정리 + 첫 dogfood | ⬜ |
 
@@ -123,7 +123,7 @@
 ### M2.2 git hook installer ✅
 - [x] M2.2.a `dohyun setup` 에 멱등 설치
 - [x] M2.2.b 기존 hook 있으면 chain
-- [ ] M2.2.c `dohyun doctor` 의 hook drift 감지
+- [x] M2.2.c `dohyun doctor` 의 hook drift 감지 (commit c82bb3b — `src/runtime/hook-drift.ts` `compareHooks` 가 missing/command/matcher drift 3 종을 잡음)
 
 ### M2.3 `[red]` advisory ✅
 - [x] M2.3.a staged 파일 검사 (tests 외 변경 시 stderr 경고)
@@ -166,9 +166,20 @@
 - [x] M3.4.b `dohyun review approve|reject --verifier-judgment <verdict>` → `.dohyun/reviews/<id>.json` 영속화
 - [x] M3.4.c Stop hook 이 판정 없이 review-pending 종료 시 재주입 (commit 811f957, dogfood 라이브 검증 완료)
 
-### M3.5 Global agent override 문서화 🟨 (a ✅ commit b1bf9c4)
+### M3.5 Global agent override 문서화 ✅ (a ✅ commit b1bf9c4, b ✅ 2026-04-27)
 - [x] M3.5.a `CLAUDE.md D.2` 우선순위 명시 + Writer/Reviewer 분리 메모 추가
-- [ ] M3.5.b 우선순위 실증 (M5.2 dogfood 과정에서 누적)
+- [x] M3.5.b 우선순위 실증 — 결론: 본 Claude Code 빌드의 Agent 도구 카탈로그에
+      `dohyun-planner` / `dohyun-implementer` / `dohyun-verifier` 가 등록되지
+      않아 spawn 자체가 불가. override 검증 이전 단계의 문제이며 후속 task
+      M3.6 으로 추적. 관찰 누적: `docs/_drafts/m3-5-b-observations.md`.
+
+### M3.6 `dohyun-*` spawn 채널 복구 ⬜ (M3.5.b 발견 후속)
+- [ ] M3.6.a Agent 도구가 `.claude/agents/*.md` 를 어떤 조건에서 카탈로그에
+      포함하는지 조사 (frontmatter 형식 / 디스커버리 단계 / 세션 재시작 요구)
+- [ ] M3.6.b 본 저장소 빌드에서 spawn 가능하게 만드는 최소 변경 (frontmatter
+      정정 또는 다른 spawn 채널 사용 — 예: Task 도구의 입력 스키마)
+- [ ] M3.6.c Stop hook 의 verifier-judgment 자동 경로가 살아 있는지 e2e 로
+      확인 (review run → verifier spawn → approve --verifier-judgment)
 
 ---
 
