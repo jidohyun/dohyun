@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { readJson } from '../utils/json.js'
 import { paths } from '../state/paths.js'
+import { PHASE_MARKER_TYPES, PHASE_MARKER_PHASES } from './commit-msg-guard.js'
 import type { QueueState, Task } from './contracts.js'
 
 /** Snapshot of the Features↔Options breathing rhythm for the current queue. */
@@ -19,7 +20,9 @@ export type BreathState = {
 /** Hard cap on how far back countInhalesByCommit walks. */
 export const INHALE_BY_COMMIT_CAP = 100
 
-const SUBJECT_RE = /^(feat|fix|refactor|docs|test|chore|perf|ci)\[(red|green|refactor|structural|behavioral|chore)\]:/
+const SUBJECT_RE = new RegExp(
+  `^(${PHASE_MARKER_TYPES.join('|')})\\[(${PHASE_MARKER_PHASES.join('|')})\\]:`,
+)
 
 /**
  * Pure parser: counts inhale commits from a list of git log subject lines

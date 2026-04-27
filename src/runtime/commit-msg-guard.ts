@@ -8,8 +8,13 @@
  * Pure function — 부수효과 없음. CLI handler 가 결과를 받아 stderr 출력 + exit code 결정.
  */
 
-const TYPES = ['feat', 'fix', 'refactor', 'docs', 'test', 'chore', 'perf', 'ci'] as const
-const PHASES = ['red', 'green', 'refactor', 'structural', 'behavioral', 'chore'] as const
+/**
+ * Phase marker SSOT (AGENT.md §9.2).
+ * Exported so other runtime modules (e.g., breath.ts) build their own
+ * matchers from the same enum, preventing drift if the marker set changes.
+ */
+export const PHASE_MARKER_TYPES = ['feat', 'fix', 'refactor', 'docs', 'test', 'chore', 'perf', 'ci'] as const
+export const PHASE_MARKER_PHASES = ['red', 'green', 'refactor', 'structural', 'behavioral', 'chore'] as const
 
 const PATTERN = /^(feat|fix|refactor|docs|test|chore|perf|ci)\[(red|green|refactor|structural|behavioral|chore)\]: .+$/
 
@@ -56,8 +61,8 @@ export function rejectMessage(result: CheckResult): string {
     `  Got:      ${got}`,
     '  Expected: <type>[<phase>]: <description>',
     '',
-    `  type:     ${TYPES.join(' | ')}`,
-    `  phase:    ${PHASES.join(' | ')}`,
+    `  type:     ${PHASE_MARKER_TYPES.join(' | ')}`,
+    `  phase:    ${PHASE_MARKER_PHASES.join(' | ')}`,
     '            (TDD 사이클 마커 OR Tidy First 마커, 정확히 하나)',
     '',
     '  Examples:',
