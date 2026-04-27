@@ -24,7 +24,7 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 0 |
+| 🔥 Now | 1 |
 | 🟢 Next | 2 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
@@ -35,7 +35,7 @@
 
 ## 2. Now (WIP ≤ 3)
 
-비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
+- 🔥 ad-hoc feature — `dohyun status` 끝에 "Next up" 섹션 추가 (세션 진입 마찰 완화) — promoted 2026-04-27
 
 ---
 
