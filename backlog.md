@@ -24,18 +24,18 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 1 |
+| 🔥 Now | 0 |
 | 🟢 Next | 2 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 44+ |
+| ✅ Done | 45+ |
 | ❌ Dropped | 3 |
 
 ---
 
 ## 2. Now (WIP ≤ 3)
 
-- 🔥 ad-hoc tidy — v2 dogfood 회고 세션 3 단락 추가 — promoted 2026-04-27
+비어있음. 다음 task 시작 시 `dohyun status` 의 "Next up" 안내 참고.
 
 ---
 
@@ -102,6 +102,7 @@
 - ✅ `M2.5.b` + `M2.5.c` — commit-driven breath gate (메인 신호 전환 + task.type fallback, commit 338b471)
 - ✅ ad-hoc tidy — v2 dogfood 회고 세션 2 단락 (commit 8a3e7fd)
 - ✅ ad-hoc feature — `dohyun status` 끝에 "Next up" 섹션 추가 (세션 진입 마찰 완화, commit e078e24)
+- ✅ ad-hoc tidy — v2 dogfood 회고 세션 3 단락 (commit a356192)
 
 ### M3 — Writer / Reviewer 서브에이전트 (land 분량)
 - ✅ `M3.1.a~b` — `.claude/agents/dohyun-planner.md` (read-only, opus) (commit db8fb06)
