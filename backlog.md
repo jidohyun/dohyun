@@ -24,18 +24,18 @@
 
 | 칸 | 카드 수 |
 |---|---|
-| 🔥 Now | 1 |
+| 🔥 Now | 0 |
 | 🟢 Next | 5 |
 | 💤 Later | 6 |
 | 🚧 Blocked | 0 |
-| ✅ Done | 38+ |
+| ✅ Done | 39+ |
 | ❌ Dropped | 3 |
 
 ---
 
 ## 2. Now (WIP ≤ 3)
 
-- 🔥 `M3.4.c` (P2) — Stop hook 이 verifier 판정 없이 review-pending 종료 시 재주입 (`stop-continue.ts` 변경) — promoted 2026-04-25 (v2 첫 dogfood)
+비어있음. 다음 task 시작 시 Next 첫 항목을 promote 한다.
 
 ---
 
@@ -108,6 +108,7 @@
 - ✅ `M3.2.a~c` — `.claude/agents/dohyun-implementer.md` (sonnet, full tools, TDD + Tidy First) (commit db8fb06)
 - ✅ `M3.3.a~c` — `.claude/agents/dohyun-verifier.md` (read-only Bash, opus, 4 단 판정) (commit db8fb06)
 - ✅ `M3.4.a~b` — `dohyun review run` verifier banner + `--verifier-judgment` 영속화 (commit 76a750c)
+- ✅ `M3.4.c` — Stop hook verifier 판정 누락 시 재주입 (commit 811f957, v2 첫 dogfood 라이브 검증)
 - ✅ `M3.5.a` — CLAUDE.md D.2 agent override 우선순위 명시 (commit b1bf9c4)
 
 ### M4 — Custom Slash Commands (land 분량)
