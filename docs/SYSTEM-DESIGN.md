@@ -2,7 +2,7 @@
 
 > dohyun 의 비-자명 결정을 **ID 화** 하여 코드/문서/커밋이 모두 같은 ID 로 역참조할 수 있게 한다.
 > 본 문서의 모든 결정은 이미 코드 또는 다른 docs 에 존재한다. **새로 발명하지 않는다** — 발견된 결정에 ID 를 부여할 뿐이다.
-> 입력: `docs/_drafts/decisions-inventory.md`. 1차 batch **23 개** 가 본 문서에 수록된다 (drafts 8장의 "21 개" 라벨은 H 5 + V 5 + B 3 + S 3 + Q 1 + R 3 + G 1 + D 2 합산 누락 — 본 문서가 정확한 카운트). 2차 batch 후보 20 개는 부록 B 참조.
+> 입력: `docs/_drafts/decisions-inventory.md`. 1차 batch **24 개** 가 본 문서에 수록된다 (drafts 8장의 "21 개" 라벨은 H 5 + V 5 + B 3 + S 3 + Q 1 + R 3 + G 1 + D 2 합산 누락 — 본 문서가 정확한 카운트. M2.5.a 의 부수 결정 B7 추가로 24). 2차 batch 후보 20 개는 부록 B 참조.
 
 ## 0. 사용법
 
@@ -16,13 +16,13 @@
 |---|---|---|
 | `H*` | Hook | 5 (H1 ~ H5) |
 | `V*` | Verify | 5 (V1, V2, V3, V8, V9) |
-| `B*` | Breath | 3 (B1, B2, B4) |
+| `B*` | Breath | 4 (B1, B2, B4, B7) |
 | `S*` | Schema | 3 (S1, S2, S3) |
 | `Q*` | Queue | 1 (Q1) |
 | `R*` | Review | 3 (R1, R3, R4) |
 | `G*` | Guard | 1 (G1) |
 | `D*` | Daemon | 2 (D1, D2) |
-| **합계** | | **23** |
+| **합계** | | **24** |
 
 각 단락 형식:
 
@@ -151,6 +151,14 @@ feature 가 review-pending 상태이면 inhale 카운트에 포함된다 (review
 **대안**: env var 유지.
 **왜 버렸나**: V3 처럼 sandbox 했어도, breath gate 는 **사람도 우회하면 안 되는** 규율 (TDD 규율 자체). escape hatch 가 있으면 누적 복잡성으로 망가진다.
 **근거 위치**: `docs/breath-gate.md:66-71`.
+
+### B7. `INHALE_BY_COMMIT_CAP = 100` (M2.5.a 부수 결정)
+
+`countInhalesByCommit` 가 git log 를 거슬러 올라가는 hard 상한. 100 commits 이상은 보지 않는다 — exhale 마커 없는 저장소에서 무한 루프 / 응답 지연을 막는 안전장치.
+
+**대안**: cap 없음 (전체 git log 스캔), cap=50, cap=1000, cap=BREATH_LIMIT*N.
+**왜 버렸나**: 100 은 *순수 안전 상한* 으로 의미는 "이 정도면 어떤 정상 dev 흐름도 exhale 한 번은 등장한다". cap 이 너무 작으면 (50) 긴 feature 시퀀스 직후 inhale 카운트가 잘려 게이트가 잘못 풀린다. 너무 크면 (1000) git log spawn 비용 / parsing 비용이 hot path (Stop hook) 에서 체감된다. 100 = "정상 운영의 5~10 배 여유" 라는 경험적 중간값. *invariant 가 아닌 운영 상수* 라 §1.1 표에는 등록하지 않는다 — 미래에 실측 데이터로 조정 가능.
+**근거 위치**: `src/runtime/breath.ts:21` (`INHALE_BY_COMMIT_CAP`), 도입 commit `42dc324` (M2.5.a, option A).
 
 ---
 
