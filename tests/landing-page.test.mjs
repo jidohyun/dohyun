@@ -66,4 +66,16 @@ describe('GitHub Pages landing page', () => {
     }
   });
 
+
+  it('should avoid compressed heading typography and accidental icon glyph slop', () => {
+    const html = read('index.html');
+    const css = read('assets/landing.css');
+
+    assert.doesNotMatch(html, />盾</, 'Schema feature icon should not use an accidental CJK glyph');
+    assert.doesNotMatch(css, /h1\s*\{[^}]*line-height:\s*0\.8/i, 'Hero heading line-height must not be visually compressed');
+    assert.doesNotMatch(css, /h2\s*\{[^}]*letter-spacing:\s*-0\.06em/i, 'Section heading tracking must not be over-tightened');
+    assert.match(css, /@media \(max-width: 560px\)[\s\S]*h1 \{[^}]*font-size: 54px;[^}]*line-height: 0\.96;/);
+    assert.match(css, /@media \(max-width: 560px\)[\s\S]*h2 \{[^}]*font-size: 34px;[^}]*line-height: 1\.05;/);
+  });
+
 });
