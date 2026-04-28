@@ -41,6 +41,8 @@ describe('GitHub Pages landing page', () => {
     assert.match(workflow, /deploy-pages@v4/);
     assert.match(workflow, /upload-pages-artifact@v3/);
     assert.match(workflow, /path: _site/);
+    assert.match(workflow, /npm install --no-audit --no-fund/);
+    assert.doesNotMatch(workflow, /npm ci/);
     assert.match(workflow, /npm test/);
   });
 
