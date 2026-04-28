@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="dohyun is a personal AI workflow harness for state-first, test-driven autonomous coding.">
+    <title>dohyun — Tidy Code That Works</title>
+    <link rel="stylesheet" href="assets/landing.css">
+  </head>
+  <body>
+    <main>
+      <section class="section hero-section" id="hero" aria-labelledby="hero-title">
+        <div class="shell hero-shell">
+          <header class="nav" aria-label="Primary">
+            <a class="brand" href="#hero" aria-label="dohyun home">
+              <span class="brand-mark">d</span>
+              <span>dohyun</span>
+            </a>
+            <nav>
+              <a href="#workflow">Workflow</a>
+              <a href="#state">State</a>
+              <a href="docs/workflow.md">Docs</a>
+              <a href="README.md">GitHub</a>
+            </nav>
+          </header>
+
+          <div class="hero-grid">
+            <div class="hero-copy">
+              <p class="badge"><span></span>Augmented Coding, not Vibe Coding</p>
+              <h1 id="hero-title">Tidy Code<br>That <em>Works</em></h1>
+              <p class="lede">A personal AI workflow harness for state-first, test-driven autonomous coding.</p>
+              <div class="button-row" aria-label="Primary actions">
+                <a class="button primary" href="#cta">Start a Session</a>
+                <a class="button secondary" href="#workflow">Read the Workflow</a>
+              </div>
+            </div>
+
+            <div class="hero-product" aria-label="dohyun session interface preview">
+              <article class="terminal-card hero-terminal">
+                <div class="window-bar"><i></i><i></i><i></i><span>dohyun session</span></div>
+                <pre><code>$ dohyun start
+Session: feature/issue-fitting
+Mode: ralph · max=10 · verified
+
+✓ Plan
+  State captured
+✓ Write failing tests
+✓ Implement
+✓ Run tests
+  42 passed
+✓ Verify
+  All checks pass with confidence.</code></pre>
+              </article>
+              <article class="state-card hero-state">
+                <div class="card-kicker">State latest</div>
+                <pre><code>{
+  "phase": "verify",
+  "tests": "green",
+  "diff": "reviewed",
+  "next": "ship"
+}</code></pre>
+              </article>
+              <div class="hero-pass"><span class="pulse"></span>All checks passing</div>
+              <div class="flow-strip" aria-label="session flow">
+                <span>Plan</span><span>State</span><span>Tests</span><span>Code</span><span>Run</span><span>Verify</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section problem-section" id="problem" aria-labelledby="problem-title">
+        <div class="shell narrow">
+          <p class="eyebrow danger">THE PROBLEM</p>
+          <h2 id="problem-title">AI coding drifts when the workflow has no memory.</h2>
+          <p class="section-lede">dohyun turns loose prompts into a stateful loop with tests, checkpoints, and verification.</p>
+          <div class="problem-grid">
+            <article class="risk-card">
+              <div class="icon danger-icon">↻</div>
+              <h3>Loops</h3>
+              <p>Repeats the same fix</p>
+              <pre><code>Attempt 3
+if user? skip guard
+if retry? same patch</code></pre>
+              <strong class="risk-label">No progress</strong>
+            </article>
+            <article class="risk-card amber">
+              <div class="icon amber-icon">□</div>
+              <h3>Unrequested features</h3>
+              <p>Builds beyond scope</p>
+              <ul>
+                <li>Added payment flow</li>
+                <li>Added dashboard</li>
+                <li>Added settings</li>
+              </ul>
+              <strong class="risk-label amber-label">Scope creep</strong>
+            </article>
+            <article class="risk-card">
+              <div class="icon danger-icon">⌘</div>
+              <h3>Cheating</h3>
+              <p>Pretends tests passed</p>
+              <pre><code>&gt; npm test
+✓ All tests passed
+(but tests were skipped)</code></pre>
+              <strong class="risk-label">False confidence</strong>
+            </article>
+            <article class="risk-card solution-card">
+              <div class="icon good-icon">✓</div>
+              <h3>Harness intervention</h3>
+              <p>Stop, checkpoint, verify</p>
+              <ol>
+                <li>Detect drift early</li>
+                <li>Save state and intent</li>
+                <li>Run tests and checks</li>
+              </ol>
+              <strong class="good-label">Progress with confidence</strong>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section workflow-section" id="workflow" aria-labelledby="workflow-title">
+        <div class="shell">
+          <p class="eyebrow">WORKFLOW</p>
+          <h2 id="workflow-title">Interview → Plan → Execute → Verify</h2>
+          <p class="section-lede">Every session moves through a bounded loop instead of improvising.</p>
+          <div class="workflow-board">
+            <article class="stage-card stage-one">
+              <span class="stage-num">1</span>
+              <h3>Interview</h3>
+              <p>Extract intent</p>
+              <ul>
+                <li>Ask scope-bound questions</li>
+                <li>Refuse vague execution</li>
+                <li>Confirm success criteria</li>
+              </ul>
+            </article>
+            <article class="stage-card stage-two">
+              <span class="stage-num">2</span>
+              <h3>Plan</h3>
+              <p>Shape testable steps</p>
+              <ul>
+                <li>Write PRD + test spec</li>
+                <li>Split one logical change</li>
+                <li>Choose verification commands</li>
+              </ul>
+            </article>
+            <article class="stage-card stage-three">
+              <span class="stage-num">3</span>
+              <h3>Execute</h3>
+              <p>Make small diffs</p>
+              <pre><code>Write tests
+Implement minimum
+Keep files small</code></pre>
+            </article>
+            <article class="stage-card stage-four">
+              <span class="stage-num">4</span>
+              <h3>Verify</h3>
+              <p>Collect evidence</p>
+              <dl>
+                <div><dt>Type</dt><dd>OK</dd></div>
+                <div><dt>Tests</dt><dd>OK</dd></div>
+                <div><dt>Lint</dt><dd>OK</dd></div>
+                <div><dt>Build</dt><dd>OK</dd></div>
+              </dl>
+            </article>
+          </div>
+          <div class="proof-strip">
+            <article><strong>TDD Loop</strong><span>Red → Green → Refactor</span></article>
+            <article><strong>Small Diffs</strong><span>One logical change</span></article>
+            <article><strong>No unchecked stops</strong><span>Every stop verified before moving forward</span></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section state-section" id="state" aria-labelledby="state-title">
+        <div class="shell state-shell">
+          <div class="state-copy">
+            <p class="eyebrow">STATE-FIRST</p>
+            <h2 id="state-title">The agent always knows where it is.</h2>
+            <p class="section-lede">Session state, queue, memory, and logs are schema-validated before work continues.</p>
+            <ul class="check-list">
+              <li>Read state before work</li>
+              <li>Checkpoint during long tasks</li>
+              <li>Verify before stopping</li>
+            </ul>
+          </div>
+          <div class="dashboard-card" aria-label="state-first runtime dashboard">
+            <aside class="file-tree">
+              <strong>dohyun/</strong>
+              <span>.dohyun/state/session.json</span>
+              <span>runtime/current-task.json</span>
+              <span>memory/hot.md</span>
+              <span>logs/log.md</span>
+              <span>plans/test-spec.md</span>
+              <span>reviews/verdict.md</span>
+            </aside>
+            <article class="json-panel">
+              <div class="panel-title">runtime/current-task.json <b>zod parse: valid</b></div>
+              <pre><code>{
+  "title": "landing page",
+  "status": "in_progress",
+  "phase": "verifying",
+  "dodChecked": [
+    "build passes",
+    "screenshots captured"
+  ]
+}</code></pre>
+            </article>
+            <article class="memory-panel">
+              <div class="panel-title">memory/hot.md</div>
+              <p>Keep the next step small, test-backed, and reversible.</p>
+            </article>
+            <article class="log-panel">
+              <div class="panel-title">logs/log.md</div>
+              <p>10:06 plan saved</p>
+              <p>10:08 red test captured</p>
+              <p>10:12 checkpoint saved</p>
+            </article>
+            <article class="checkpoint-panel">
+              <div class="panel-title">checkpoint saved</div>
+              <ol>
+                <li>Plan</li>
+                <li>Red test</li>
+                <li>Green diff</li>
+                <li>Visual compare</li>
+                <li>Verify</li>
+              </ol>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section principles-section" id="principles" aria-labelledby="principles-title">
+        <div class="shell">
+          <p class="eyebrow">PRINCIPLES</p>
+          <h2 id="principles-title">Built for disciplined autonomous work.</h2>
+          <p class="section-lede">dohyun favors small, verified steps over impressive-looking chaos.</p>
+          <div class="feature-grid">
+            <article>
+              <span class="feature-icon">↺</span>
+              <h3>TDD cycle</h3>
+              <p>Red → Green → Refactor</p>
+              <div class="mini-flow"><b>Red</b><b>Green</b><b>Refactor</b></div>
+              <pre><code>test: failing
+build: blocked
+next: minimum fix</code></pre>
+            </article>
+            <article>
+              <span class="feature-icon">◱</span>
+              <h3>Tidy First</h3>
+              <p>Structure before behavior</p>
+              <pre><code>feat[red]    add one failing test
+feat[green]  pass with minimum code
+refactor     clean structure only</code></pre>
+            </article>
+            <article>
+              <span class="feature-icon">◇</span>
+              <h3>Small diffs</h3>
+              <p>One logical change</p>
+              <pre><code>diff --stat
+index.html       +42
+landing.css      +18
+scope: one section
+status: reviewed</code></pre>
+            </article>
+            <article>
+              <span class="feature-icon">⌁</span>
+              <h3>Thin hooks</h3>
+              <p>Input → runtime → output</p>
+              <div class="mini-pipeline"><span>Input</span><span>Runtime</span><span>Output</span></div>
+              <pre><code>hook receives event
+runtime decides
+stdout stays clean</code></pre>
+            </article>
+            <article>
+              <span class="feature-icon">盾</span>
+              <h3>Schema-validated state</h3>
+              <p>Parse before trust</p>
+              <pre><code>SessionSchema.parse(state)
+TaskSchema.parse(task)
+QueueSchema.parse(queue)
+result: trusted</code></pre>
+            </article>
+            <article>
+              <span class="feature-icon">▣</span>
+              <h3>Log everything</h3>
+              <p>Append-only audit trail</p>
+              <pre><code>10:06 plan-load
+10:08 red-test
+10:12 green-build
+10:16 visual-compare
+10:18 verified</code></pre>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section cta-section" id="cta" aria-labelledby="cta-title">
+        <div class="shell cta-shell">
+          <div class="metric-row" aria-label="completion evidence">
+            <span>State captured <b>✓</b></span>
+            <span>Tests passing <b>✓</b></span>
+            <span>Diff reviewed <b>✓</b></span>
+            <span>Ready to ship <b>✓</b></span>
+          </div>
+          <h2 id="cta-title" aria-label="Give your agent a harness.">Give your agent a <em>harness.</em></h2>
+          <p class="section-lede">Start every coding session with state, tests, logs, and a real definition of done.</p>
+          <article class="terminal-card install-card">
+            <div class="window-bar"><i></i><i></i><i></i><span>terminal</span></div>
+            <pre><code>$ dohyun start
+✓ state loaded
+✓ plan gate checked
+✓ test command selected
+→ next: small verified diff</code></pre>
+          </article>
+          <div class="cta-proof"><span>review gate</span><span>doctor OK</span><span>zero known errors</span></div>
+          <div class="button-row center">
+            <a class="button primary" href="#hero">Start a Session</a>
+            <a class="button secondary" href="README.md">Read the Docs</a>
+          </div>
+          <footer class="footer-nav">
+            <a href="#workflow">Workflow</a>
+            <a href="docs/conventions.md">Conventions</a>
+            <a href="docs/architecture.md">Architecture</a>
+            <a href="src/runtime/contracts.ts">Runtime contracts</a>
+          </footer>
+          <p class="tiny-note">Tidy Code That Works.</p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

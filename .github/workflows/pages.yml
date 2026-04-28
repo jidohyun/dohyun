@@ -1,0 +1,64 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - assets/**
+      - README.md
+      - docs/workflow.md
+      - docs/conventions.md
+      - docs/architecture.md
+      - src/runtime/contracts.ts
+      - .github/workflows/pages.yml
+      - tests/landing-page.test.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Package static site
+        run: |
+          rm -rf _site
+          mkdir -p _site/assets _site/docs _site/src/runtime
+          cp index.html _site/index.html
+          cp README.md _site/README.md
+          cp docs/workflow.md _site/docs/workflow.md
+          cp docs/conventions.md _site/docs/conventions.md
+          cp docs/architecture.md _site/docs/architecture.md
+          cp src/runtime/contracts.ts _site/src/runtime/contracts.ts
+          cp -R assets/. _site/assets/
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
