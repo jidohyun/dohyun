@@ -4,6 +4,8 @@
 > `backlog.md` 는 본 문서의 같은 ID 들을 *상태 view* (Now/Next/Later/Done) 로 보여줄 뿐, ID 자체를 발명하지 않는다.
 > 두 파일이 어긋나면 **PLAN 이 우선**이며 backlog 는 sync 되어야 한다.
 > 입력: `.dohyun/plans/v2-roadmap-chazm-style.md`, `_drafts/decisions-inventory.md`, `_drafts/chazm-mapping.md`.
+>
+> **결정 ID 카탈로그** (`docs/SYSTEM-DESIGN.md` 0.1 의 prefix 체계와 동기): `H*` Hook · `V*` Verify · `B*` Breath · `S*` Schema · `Q*` Queue · `R*` Review · `G*` Guard · `D*` Daemon · `A*` Agent discovery (M3.6.a 추가, 첫 항목 A1).
 
 ---
 

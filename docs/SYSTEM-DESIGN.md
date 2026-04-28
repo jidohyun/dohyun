@@ -2,7 +2,7 @@
 
 > dohyun 의 비-자명 결정을 **ID 화** 하여 코드/문서/커밋이 모두 같은 ID 로 역참조할 수 있게 한다.
 > 본 문서의 모든 결정은 이미 코드 또는 다른 docs 에 존재한다. **새로 발명하지 않는다** — 발견된 결정에 ID 를 부여할 뿐이다.
-> 입력: `docs/_drafts/decisions-inventory.md`. 1차 batch **24 개** 가 본 문서에 수록된다 (drafts 8장의 "21 개" 라벨은 H 5 + V 5 + B 3 + S 3 + Q 1 + R 3 + G 1 + D 2 합산 누락 — 본 문서가 정확한 카운트. M2.5.a 의 부수 결정 B7 추가로 24). 2차 batch 후보 20 개는 부록 B 참조.
+> 입력: `docs/_drafts/decisions-inventory.md`. 1차 batch **25 개** 가 본 문서에 수록된다 (drafts 8장의 "21 개" 라벨은 H 5 + V 5 + B 3 + S 3 + Q 1 + R 3 + G 1 + D 2 합산 누락 — 본 문서가 정확한 카운트. M2.5.a 의 부수 결정 B7 추가로 24, M3.6.a 의 디스커버리 결정 A1 추가로 25). 2차 batch 후보 20 개는 부록 B 참조.
 
 ## 0. 사용법
 
@@ -22,7 +22,8 @@
 | `R*` | Review | 3 (R1, R3, R4) |
 | `G*` | Guard | 1 (G1) |
 | `D*` | Daemon | 2 (D1, D2) |
-| **합계** | | **24** |
+| `A*` | Agent discovery | 1 (A1) |
+| **합계** | | **25** |
 
 각 단락 형식:
 
@@ -265,6 +266,24 @@ npm 패키지 자체는 BEAM 에 의존하지 않는다. daemon 은 platform-spe
 **대안**: BEAM 의 binary term format (BERT) 사용.
 **왜 버렸나**: JSON 은 디버깅 가능 + 기존 schemas.ts 단일 진실원 유지.
 **근거 위치**: `docs/architecture.md:34-66`.
+
+---
+
+## 9. Agent discovery (A*)
+
+### A1. 본 Claude Code 빌드는 저장소 로컬 `.claude/agents/*.md` 정의를 Agent 도구 카탈로그에 등록하지 않는다
+
+M3.6.a 의 직접 실증 (2026-04-28) 결과: 본 Claude Code 세션에서 `Agent({ subagent_type: "dohyun-planner" })` 호출은 즉시 `Agent type 'dohyun-planner' not found` 에러를 낸다. Available agents 화이트리스트에 `dohyun-planner` / `dohyun-implementer` / `dohyun-verifier` 가 모두 부재. 같은 세션에서 plugin agent (`claude-code-guide`) 와 빌트인 (`Explore`, `Plan` 등) 은 정상 spawn. 따라서 dohyun 의 Writer/Reviewer 분리 (M3.1~M3.3) 는 **현 빌드에서 Agent 도구 채널로 작동하지 않으며**, 채널 복구는 M3.6.b 의 별도 작업으로 다룬다.
+
+세 가설의 본 시점 판정 (`docs/_drafts/m3-6-a-discovery-findings.md` 4 절):
+
+- 가설 1 (frontmatter 형식 거부) — **미확인**. 에러 메시지가 파싱 실패 진단을 포함하지 않아 "정의를 못 읽었는지 / 읽었는데 탈락시켰는지" 분리 불가.
+- 가설 2 (세션 재시작 / 명시적 등록 필요) — **정황 약하게 기각**. 본 정의는 commit `db8fb06` 이후 세션 시작 전부터 존재했으므로 "재시작이 필요" 만으로는 본 사례를 설명하지 못함.
+- 가설 3 (카탈로그가 plugin / 빌트인 채널만 enumerate) — **본 환경 실증으로 강하게 지지**. Available agents 의 모든 항목이 `<plugin>:<name>` 또는 빌트인 형식. 단 Anthropic 공식 문서 직접 인용은 본 조사에서 확보하지 못함.
+
+**대안**: A1 을 만들지 않고 M3.5.b 메모만 유지.
+**왜 버렸나**: spawn 채널 부재가 M5.2 dogfood 를 직접 막는 1 차 결정인데, 결정 ID 없이 `_drafts/` 메모로만 두면 후속 task / 커밋이 본 사실을 인용할 근거 ID 가 없어 "그냥 안 됨" 의 즉흥적 우회로 새기 쉽다. ID 화 함으로써 M3.6.b / verifier 자동 경로 / dogfood 결정이 모두 같은 ID 를 참조하게 한다.
+**근거 위치**: `docs/_drafts/m3-6-a-discovery-findings.md` 3 절 (실증), `_drafts/m3-5-b-observations.md` 관찰 #2 (재현 1차), `PLAN.md` M3.6 항목.
 
 ---
 
